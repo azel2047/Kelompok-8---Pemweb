@@ -1,52 +1,225 @@
-<div class="min-h-screen bg-slate-50 pb-12">
-    <!-- html5-qrcode library -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
+<div class="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-800"
+     x-data="{
+         activeTab: 'dashboard',
+         selectedDay: '{{ $defaultSelectedDay }}',
+         showScannerModal: @entangle('showScannerModal'),
+         showRegisterFaceModal: @entangle('showRegisterFaceModal'),
+         locationStatus: 'Area Sekolah (Radius Aman)',
+         timeStr: '',
+         dateStr: '',
+         
+         // Profile Modals
+         showPersonalInfoModal: false,
+         showNotificationModal: false,
+         showHelpModal: false,
+         showFaceIdManageModal: false,
+         showLogoutModal: false,
+         
+         // Calendar History state
+         selectedHistoryDay: null,
 
-    <!-- Navbar / Header -->
-    <header class="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-800 text-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                    <!-- School Icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 017.918 5.838 50.57 50.57 0 00-2.658.813M4.26 10.147a49.117 49.117 0 0115.48 0" />
-                    </svg>
+         initTime() {
+             const update = () => {
+                 const now = new Date();
+                 let hours = now.getHours();
+                 let minutes = now.getMinutes();
+                 let ampm = hours >= 12 ? 'PM' : 'AM';
+                 hours = hours % 12;
+                 hours = hours ? hours : 12;
+                 minutes = minutes < 10 ? '0' + minutes : minutes;
+                 this.timeStr = (hours < 10 ? '0' + hours : hours) + ':' + minutes + ' ' + ampm;
+                 
+                 const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+                 this.dateStr = now.toLocaleDateString('id-ID', options);
+             };
+             update();
+             setInterval(update, 1000);
+         }
+     }"
+     x-init="initTime()">
+    
+    <style>
+        .scrollbar-none::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-none {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes scanLaser {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        #webcam-portal-reader video {
+            object-fit: cover !important;
+            border-radius: 1.5rem;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .face-video-container {
+            position: relative;
+            width: 100%;
+            max-width: 280px;
+            aspect-ratio: 1 / 1;
+            background: #020617;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+        }
+        .face-video-container video,
+        .face-video-container canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+
+    @push('scripts')
+        <!-- html5-qrcode library -->
+        <script src="https://unpkg.com/html5-qrcode"></script>
+        <!-- face-api.js is loaded lazily when Face ID is needed -->
+        <script>
+            window.__faceModelsLoaded = false;
+            window.__faceApiReady = false;
+            window.__loadFaceApi = async function() {
+                if (window.__faceApiReady) return;
+                if (typeof faceapi === 'undefined') {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js';
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                }
+                window.__faceApiReady = true;
+            };
+            window.__loadFaceModels = async function() {
+                if (window.__faceModelsLoaded) return;
+                await window.__loadFaceApi();
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                ]);
+                window.__faceModelsLoaded = true;
+            };
+        </script>
+    @endpush
+
+    <!-- Desktop Left Sidebar -->
+    <aside class="hidden md:flex md:w-64 md:flex-col md:h-screen md:sticky md:top-0 bg-white border-r border-slate-100 shrink-0 text-slate-700 z-30 select-none p-5 justify-between">
+        <div class="space-y-6">
+            <!-- Branding -->
+            <div class="flex items-center space-x-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-extrabold text-base shadow-md shadow-indigo-100">
+                    E
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-wide">SI-ABSEN-QR</h1>
-                    <p class="text-xs text-blue-100">Portal Presensi Siswa</p>
+                <span class="text-lg font-black text-slate-800 tracking-tight">EduAttend</span>
+            </div>
+
+            <!-- Student Profile Summary -->
+            <div class="bg-slate-50/70 border border-slate-100 p-4 rounded-2xl flex items-center space-x-3">
+                @if($siswa->foto_profil)
+                    <img src="{{ asset('storage/' . $siswa->foto_profil) }}" alt="{{ $siswa->user->name }}" class="w-10 h-10 rounded-full object-cover">
+                @else
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm">
+                        {{ strtoupper(substr($siswa->user->name, 0, 2)) }}
+                    </div>
+                @endif
+                <div class="space-y-0.5 overflow-hidden">
+                    <h4 class="text-xs font-black text-slate-800 truncate leading-tight">{{ $siswa->user->name }}</h4>
+                    <p class="text-[10px] text-slate-400 font-semibold truncate">{{ $siswa->kelas->nama_kelas }}</p>
+                    <span class="inline-flex items-center text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full mt-1 border border-emerald-100">
+                        <span class="w-1 h-1 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>Active
+                    </span>
                 </div>
             </div>
 
-            <!-- Logout Form -->
-            <form action="{{ route('logout') }}" method="POST" class="inline">
-                @csrf
-                <button type="submit" class="bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 text-red-200 text-xs px-3 py-2 rounded-xl font-semibold transition duration-150 flex items-center space-x-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+            <!-- Nav Links -->
+            <nav class="space-y-1 text-xs font-bold text-slate-600">
+                <button @click="activeTab = 'dashboard'" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-slate-50"
+                        :class="activeTab === 'dashboard' ? 'text-indigo-600 bg-indigo-50/60' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
                     </svg>
-                    <span>Keluar</span>
+                    <span>Dashboard</span>
                 </button>
-            </form>
+                <button @click="activeTab = 'history'" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-slate-50"
+                        :class="activeTab === 'history' ? 'text-indigo-600 bg-indigo-50/60' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Riwayat Kehadiran</span>
+                </button>
+                <button @click="activeTab = 'schedule'" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-slate-50"
+                        :class="activeTab === 'schedule' ? 'text-indigo-600 bg-indigo-50/60' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Jadwal Pelajaran</span>
+                </button>
+                <button @click="activeTab = 'profile'" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-slate-50"
+                        :class="activeTab === 'profile' ? 'text-indigo-600 bg-indigo-50/60' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>Profil Saya</span>
+                </button>
+            </nav>
         </div>
-    </header>
 
-    <!-- Main Container -->
-    <div class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
-        <!-- Floating Success & Error Alert Toast Notifications -->
+        <!-- Logout Sidebar Link -->
+        <button @click="showLogoutModal = true" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-rose-50 text-rose-600 text-xs font-bold">
+            <svg class="w-4.5 h-4.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Keluar Akun</span>
+        </button>
+    </aside>
+
+    <!-- Main View Shell -->
+    <div class="flex-grow flex flex-col min-h-screen relative overflow-hidden">
+        
+        <!-- Mobile Header -->
+        <header class="bg-white px-5 py-3.5 flex md:hidden justify-between items-center border-b border-slate-100 sticky top-0 z-20 shrink-0">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-200">
+                    E
+                </div>
+                <span class="text-base font-bold text-slate-800 tracking-tight">EduAttend</span>
+            </div>
+            <button class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 relative transition">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+                <span class="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+            </button>
+        </header>
+
+        <!-- Floating Alert Toast Notification -->
         @if($successMessage || $errorMessage)
-            <div class="fixed top-6 left-4 right-4 z-50 max-w-md mx-auto animate-[slideInDown_0.3s_ease-out]">
+            <div class="absolute top-4 left-4 right-4 md:left-auto md:right-8 md:top-6 z-40 max-w-sm w-full mx-auto animate-[slideInDown_0.3s_ease-out]">
                 @if($successMessage)
-                    <div class="bg-emerald-600 text-white rounded-2xl shadow-xl p-4 flex items-start space-x-3 border border-emerald-500">
-                        <svg class="w-6 h-6 shrink-0 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <div class="bg-emerald-600 text-white rounded-2xl shadow-xl p-3.5 flex items-start space-x-2 border border-emerald-500 text-xs">
+                        <svg class="w-5 h-5 shrink-0 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <div class="flex-grow space-y-0.5">
-                            <p class="font-bold text-sm">Absensi Berhasil</p>
-                            <p class="text-xs text-emerald-100">{{ $successMessage }}</p>
+                        <div class="flex-grow">
+                            <p class="font-bold">Berhasil</p>
+                            <p class="text-[11px] text-emerald-100">{{ $successMessage }}</p>
                         </div>
-                        <button wire:click="$set('successMessage', '')" class="text-white/80 hover:text-white focus:outline-none">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <button wire:click="$set('successMessage', '')" class="text-white/80 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -54,16 +227,16 @@
                 @endif
 
                 @if($errorMessage)
-                    <div class="bg-red-600 text-white rounded-2xl shadow-xl p-4 flex items-start space-x-3 border border-red-500 mt-2">
-                        <svg class="w-6 h-6 shrink-0 text-red-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <div class="bg-rose-600 text-white rounded-2xl shadow-xl p-3.5 flex items-start space-x-2 border border-rose-500 text-xs mt-1">
+                        <svg class="w-5 h-5 shrink-0 text-rose-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        <div class="flex-grow space-y-0.5">
-                            <p class="font-bold text-sm">Pemberitahuan</p>
-                            <p class="text-xs text-red-100">{{ $errorMessage }}</p>
+                        <div class="flex-grow">
+                            <p class="font-bold">Pemberitahuan</p>
+                            <p class="text-[11px] text-rose-100">{{ $errorMessage }}</p>
                         </div>
-                        <button wire:click="$set('errorMessage', '')" class="text-white/80 hover:text-white focus:outline-none">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <button wire:click="$set('errorMessage', '')" class="text-white/80 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -72,284 +245,895 @@
             </div>
         @endif
 
-        <!-- Siswa Info Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row items-center justify-between gap-6 transition hover:shadow-md duration-200">
-            <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                <!-- Profile Image / Avatar -->
-                <div class="relative">
-                    @if($siswa->foto_profil)
-                        <img src="{{ asset('storage/' . $siswa->foto_profil) }}" alt="{{ $siswa->user->name }}" class="w-24 h-24 rounded-full object-cover border-4 border-indigo-100 shadow-inner">
-                    @else
-                        <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center border-4 border-indigo-100 shadow-lg text-white font-bold text-3xl">
-                            {{ strtoupper(substr($siswa->user->name, 0, 2)) }}
-                        </div>
-                    @endif
-                    <div class="absolute bottom-0 right-0 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white" title="Online"></div>
+        <!-- Main Screen Scroll Container -->
+        <div class="flex-grow overflow-y-auto pb-24 md:pb-8 px-4 py-5 md:px-8 md:py-6 space-y-6 scrollbar-none">
+
+            <!-- TAB 1: DASHBOARD UTAMA -->
+            <div x-show="activeTab === 'dashboard'" class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+                <!-- Profile Greeting -->
+                <div class="flex justify-between items-center bg-white p-5 md:p-6 rounded-[28px] border border-slate-100 shadow-xs">
+                    <div>
+                        <h2 class="text-base md:text-xl font-extrabold text-slate-800 tracking-tight">Selamat Datang, {{ $siswa->user->name }}!</h2>
+                        <p class="text-xs text-slate-400 font-medium">Student ID: <span class="font-mono text-slate-500 font-semibold">{{ $siswa->nisn }}</span></p>
+                    </div>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                        Status: Active
+                    </span>
                 </div>
 
-                <!-- Profile Details -->
-                <div class="space-y-1">
-                    <h2 class="text-xl font-bold text-slate-800">{{ $siswa->user->name }}</h2>
-                    <p class="text-sm font-semibold text-indigo-600">{{ $siswa->kelas->nama_kelas }}</p>
-                    <p class="text-xs text-slate-400">NISN: <span class="font-mono text-slate-600 font-medium">{{ $siswa->nisn }}</span></p>
+                <!-- Main Content Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Left Column: Verification & Location (5 cols) -->
+                    <div class="lg:col-span-5 space-y-6">
+                        <!-- Location & Time status card -->
+                        <div class="bg-white p-5 md:p-6 rounded-[28px] shadow-xs border border-slate-100/80 flex flex-col items-center text-center space-y-3.5">
+                            <div class="flex items-center space-x-1.5 bg-emerald-50/50 px-3.5 py-1.5 rounded-full border border-emerald-100/50 text-[10px] text-emerald-700 font-bold">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                                <span x-text="locationStatus">Lokasi Anda: Area Sekolah (Radius Aman)</span>
+                            </div>
+                            <div class="space-y-1">
+                                <h2 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight" x-text="timeStr">05:27 PM</h2>
+                                <p class="text-[11px] font-semibold text-slate-400" x-text="dateStr">Senin, 14 Agustus 2024</p>
+                            </div>
+                        </div>
+
+                        <!-- Quick Verification Area -->
+                        <div class="space-y-3">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Verification</h3>
+                            <div class="grid grid-cols-2 gap-3.5">
+                                <!-- Scan QR Code Button -->
+                                <button wire:click="toggleScannerModal" class="w-full bg-indigo-950 hover:bg-indigo-900 text-white py-5 px-4 rounded-[24px] shadow-md transition flex flex-col items-center justify-center space-y-2 border border-indigo-900 group">
+                                    <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-indigo-200 group-hover:scale-105 transition">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 12v1.5m0 0v1.5m0-1.5h1.5m-1.5 0h-1.5M12 18.75h1.5M16.5 21h1.5m-3-2.25h.008v.008H15v-.008z" />
+                                        </svg>
+                                    </div>
+                                    <span class="text-xs font-bold">Scan QR Code</span>
+                                </button>
+
+                                <!-- Verify Face ID / Register Face ID Button -->
+                                @if($siswa->face_embedding)
+                                    <button wire:click="toggleScannerModal" class="w-full bg-white hover:bg-slate-50 text-indigo-950 py-5 px-4 rounded-[24px] shadow-sm border border-slate-200 transition flex flex-col items-center justify-center space-y-2 group">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
+                                            </svg>
+                                        </div>
+                                        <span class="text-xs font-bold text-slate-800">Verify Face ID</span>
+                                    </button>
+                                @else
+                                    <button wire:click="$set('showRegisterFaceModal', true)" class="w-full bg-white hover:bg-slate-50 text-indigo-950 py-5 px-4 rounded-[24px] shadow-sm border border-slate-200 transition flex flex-col items-center justify-center space-y-2 group">
+                                        <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <span class="text-xs font-bold text-indigo-600">Daftar Face ID</span>
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Stats Grid (7 cols) -->
+                    <div class="lg:col-span-7">
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Hadir Bulan Ini -->
+                            <div class="bg-indigo-950 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
+                                <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">Hadir Bulan Ini</p>
+                                <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $hadirBulanIniCount }} <span class="text-sm font-semibold text-indigo-300">/20</span></h3>
+                            </div>
+                            <!-- Tepat Waktu -->
+                            <div class="bg-emerald-600 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
+                                <p class="text-[11px] font-bold text-emerald-100 uppercase tracking-wider">Tepat Waktu</p>
+                                <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $tepatWaktuCount }}</h3>
+                            </div>
+                            <!-- Izin / Sakit -->
+                            <div class="bg-amber-500 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
+                                <p class="text-[11px] font-bold text-amber-100 uppercase tracking-wider">Izin / Sakit</p>
+                                <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $izinSakitCount }}</h3>
+                            </div>
+                            <!-- Terlambat -->
+                            <div class="bg-rose-500 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
+                                <p class="text-[11px] font-bold text-rose-100 uppercase tracking-wider">Terlambat</p>
+                                <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $terlambatCount }}</h3>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Action Button: Scan QR Kelas (Webcam Scan) -->
-            <button wire:click="toggleScannerModal" 
-                class="w-full md:w-auto bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-md hover:shadow-indigo-500/20 transform hover:-translate-y-0.5 transition duration-150 flex items-center justify-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                </svg>
-                <span>Pindai QR Absen</span>
-            </button>
-        </div>
-
-        <!-- Layout Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Left Side: Jadwal Hari Ini (Span 2) -->
-            <div class="md:col-span-2 space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-md font-bold text-slate-800 flex items-center space-x-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-indigo-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                        </svg>
-                        <span>Jadwal Hari Ini ({{ $hariIni }})</span>
-                    </h3>
+            <!-- TAB 2: RIWAYAT ABSENSI -->
+            <div x-show="activeTab === 'history'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Riwayat Absensi</h2>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-100 overflow-hidden">
-                    @forelse($jadwalHariIni as $j)
-                        <div class="p-5 flex items-center justify-between hover:bg-slate-50/50 transition">
-                            <div class="flex items-start space-x-4">
-                                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <!-- Left Column: Calendar (5 cols) -->
+                    <div class="lg:col-span-5 bg-white p-5 rounded-[28px] shadow-xs border border-slate-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm font-bold text-slate-800">{{ now()->translatedFormat('F Y') }}</span>
+                            <div class="flex space-x-2 text-slate-400">
+                                <button @click="selectedHistoryDay = null" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-xl">Reset Filter</button>
+                            </div>
+                        </div>
+                        <!-- Calendar Grid Header -->
+                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-2">
+                            <span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span>
+                        </div>
+                        <!-- Calendar Dates -->
+                        <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-bold text-slate-700 select-none">
+                            @php
+                                $startDayOfWeek = now()->startOfMonth()->dayOfWeek; // 0=Sunday, 6=Saturday
+                                $daysInMonth = now()->daysInMonth;
+                                $todayDayNum = now()->day;
+                            @endphp
+                            
+                            <!-- Empty spacer blocks -->
+                            @for($i = 0; $i < $startDayOfWeek; $i++)
+                                <span class="py-1 opacity-0">.</span>
+                            @endfor
+
+                            <!-- Days of Month -->
+                            @for($day = 1; $day <= $daysInMonth; $day++)
+                                @php
+                                    $isToday = ($day === $todayDayNum);
+                                @endphp
+                                <div @click="selectedHistoryDay = (selectedHistoryDay === {{ $day }} ? null : {{ $day }})"
+                                     class="py-1 flex items-center justify-center cursor-pointer group">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-full transition font-bold"
+                                          :class="selectedHistoryDay === {{ $day }} ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : '{{ $isToday ? 'bg-indigo-950 text-white shadow-md' : 'group-hover:bg-slate-100 text-slate-700' }}'">
+                                        {{ $day }}
+                                    </span>
+                                </div>
+                            @endfor
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Recent Activities (7 cols) -->
+                    <div class="lg:col-span-7 space-y-3">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aktivitas Terbaru</h3>
+                        
+                        <div class="space-y-2.5">
+                            @forelse($riwayatAbsensiLengkap as $absen)
+                                @php
+                                    $isLate = false;
+                                    if ($absen->status === 'Hadir' && $absen->jadwalPelajaran) {
+                                        $checkinTime = $absen->created_at->format('H:i:s');
+                                        $startTimePlus15 = date('H:i:s', strtotime($absen->jadwalPelajaran->jam_mulai . ' +15 minutes'));
+                                        if ($checkinTime > $startTimePlus15) {
+                                            $isLate = true;
+                                        }
+                                    }
+                                @endphp
+                                <div x-show="selectedHistoryDay === null || selectedHistoryDay === {{ $absen->created_at->day }}"
+                                     class="bg-white p-3.5 rounded-[24px] shadow-xs border border-slate-100 flex items-center justify-between animate-[fadeIn_0.15s_ease-out]">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $isLate || $absen->status === 'Alfa' ? 'bg-rose-50 text-rose-500' : ($absen->status === 'Hadir' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500') }}">
+                                            @if($isLate || $absen->status === 'Alfa')
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            @elseif($absen->status === 'Hadir')
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            @else
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            @endif
+                                        </div>
+                                        <div class="space-y-0.5">
+                                            <h4 class="text-xs font-extrabold text-slate-800 leading-tight">
+                                                {{ $absen->jadwalPelajaran ? $absen->jadwalPelajaran->mataPelajaran->nama_mapel : 'Absensi Umum' }}
+                                            </h4>
+                                            <p class="text-[10px] text-slate-400 font-semibold">
+                                                {{ $absen->created_at->translatedFormat('D, d F Y') }} &bull; {{ $absen->created_at->format('H:i') }} WIB
+                                                @if($isLate)
+                                                    <span class="text-rose-500 font-bold">(Terlambat)</span>
+                                                @elseif($absen->status === 'Hadir')
+                                                    <span class="text-emerald-500 font-bold">(Tepat Waktu)</span>
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-lg text-[9px] font-extrabold border {{ $isLate || $absen->status === 'Alfa' ? 'bg-rose-50 text-rose-600 border-rose-100' : ($absen->status === 'Hadir' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100') }}">
+                                        {{ $absen->status }}
+                                    </span>
+                                </div>
+                            @empty
+                                <p class="text-xs text-center text-slate-400 py-6 bg-white rounded-[24px] border border-slate-100 w-full">Belum ada riwayat kehadiran.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: JADWAL PELAJARAN -->
+            <div x-show="activeTab === 'schedule'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out] flex flex-col flex-grow min-h-[480px]">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Jadwal Pelajaran</h2>
+                </div>
+
+                <!-- Weekly calendar days selection (Scrollable on mobile, grid on desktop) -->
+                @php
+                    $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                    $dayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                @endphp
+                <div class="flex space-x-3 overflow-x-auto pb-2 select-none scrollbar-none shrink-0 md:grid md:grid-cols-6 md:gap-3 md:space-x-0">
+                    @foreach($days as $idx => $d)
+                        <div @click="selectedDay = '{{ $d }}'"
+                             class="flex-shrink-0 w-12 md:w-auto py-3 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition border border-slate-100"
+                             :class="selectedDay === '{{ $d }}' ? 'bg-indigo-950 text-white shadow-md border-indigo-950' : 'bg-white text-slate-500 hover:bg-slate-50'">
+                             <span class="text-[9px] font-bold uppercase tracking-wider opacity-85" :class="selectedDay === '{{ $d }}' ? 'text-indigo-200' : 'text-slate-400'">{{ $dayShort[$idx] }}</span>
+                             <span class="text-xs font-black mt-1">{{ 14 + $idx }}</span>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- Schedule Card list filtered by selectedDay -->
+                <div class="w-full flex-grow flex flex-col">
+                    @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $dName)
+                        @php
+                            $schedulesForDay = $jadwalSeminggu->where('hari', $dName);
+                        @endphp
+                        
+                        <div x-show="selectedDay === '{{ $dName }}'" class="w-full flex-grow flex flex-col">
+                            @if($schedulesForDay->count() > 0)
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    @foreach($schedulesForDay as $j)
+                                        @php
+                                            $currentTime = date('H:i:s');
+                                            $isToday = ($j->hari === $hariIni);
+                                            
+                                            if (!$isToday) {
+                                                $status = 'Mendatang';
+                                            } elseif ($currentTime > $j->jam_selesai) {
+                                                $status = 'Selesai';
+                                            } elseif ($currentTime >= $j->jam_mulai && $currentTime <= $j->jam_selesai) {
+                                                $status = 'Sedang Berlangsung';
+                                            } else {
+                                                $status = 'Mendatang';
+                                            }
+                                        @endphp
+                                        <div class="rounded-[28px] p-5 shadow-xs border transition duration-150 relative overflow-hidden flex flex-col justify-between min-h-[140px]
+                                             {{ $status === 'Sedang Berlangsung' ? 'bg-indigo-950 text-white border-indigo-950 shadow-md' : ($status === 'Selesai' ? 'bg-slate-50/70 text-slate-400 border-slate-200/50' : 'bg-white text-slate-700 border-slate-100') }}">
+                                             
+                                             <div class="flex justify-between items-start space-x-2">
+                                                 <div class="space-y-0.5">
+                                                     <p class="text-[10px] font-bold tracking-wide {{ $status === 'Sedang Berlangsung' ? 'text-indigo-200' : 'text-slate-400' }}">
+                                                         {{ substr($j->jam_mulai, 0, 5) }} - {{ substr($j->jam_selesai, 0, 5) }} WIB
+                                                     </p>
+                                                     <h3 class="text-sm font-black tracking-tight leading-snug">
+                                                         {{ $j->mataPelajaran->nama_mapel }}
+                                                     </h3>
+                                                 </div>
+                                                 <span class="px-2.5 py-1 rounded-full text-[9px] font-extrabold border shrink-0
+                                                     {{ $status === 'Sedang Berlangsung' ? 'bg-white/10 text-white border-white/20' : ($status === 'Selesai' ? 'bg-slate-200/50 text-slate-500 border-slate-300/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100') }}">
+                                                     {{ $status }}
+                                                 </span>
+                                             </div>
+        
+                                             <div class="mt-4 flex items-center justify-between text-[10px] font-medium border-t pt-3.5 {{ $status === 'Sedang Berlangsung' ? 'border-white/10 text-indigo-200' : 'border-slate-100 text-slate-500' }}">
+                                                 <span class="flex items-center">
+                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                     Guru Pengampu
+                                                 </span>
+                                                 <span class="flex items-center">
+                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                     R. Kelas
+                                                 </span>
+                                             </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="bg-white p-8 rounded-[28px] border border-slate-100/80 text-center text-slate-400 w-full flex-grow flex flex-col items-center justify-center min-h-[320px] shadow-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mx-auto mb-2 text-slate-300">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                                     </svg>
+                                    <p class="text-xs font-bold text-slate-500">Tidak ada jadwal pelajaran</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Nikmati waktu istirahat Anda!</p>
                                 </div>
-                                <div class="space-y-0.5">
-                                    <h4 class="font-bold text-slate-800 text-sm md:text-base">{{ $j->mataPelajaran->nama_mapel }}</h4>
-                                    <p class="text-xs text-slate-500 font-medium">Kode: {{ $j->mataPelajaran->kode_mapel }}</p>
-                                    <div class="flex items-center space-x-1 text-xs text-slate-400 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            @endif
+                        </div>
+                    @endforeach
+                    
+                    <!-- Minggu fallback -->
+                    <div x-show="selectedDay === 'Minggu'" class="bg-white p-8 rounded-[28px] border border-slate-100/80 text-center text-slate-400 w-full flex-grow flex flex-col items-center justify-center min-h-[320px] shadow-xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mx-auto mb-2 text-slate-300">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-xs font-bold text-slate-500">Hari Minggu libur</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Waktunya bersantai di rumah!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: PROFIL SISWA -->
+            <div x-show="activeTab === 'profile'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <!-- Left Column: Details & Stats (5 cols) -->
+                    <div class="lg:col-span-5 space-y-6">
+                        <!-- Profile details card -->
+                        <div class="bg-white p-6 rounded-[28px] shadow-xs border border-slate-100 flex flex-col items-center space-y-4">
+                            <div class="relative">
+                                @if($siswa->foto_profil)
+                                    <img src="{{ asset('storage/' . $siswa->foto_profil) }}" alt="{{ $siswa->user->name }}" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
+                                @else
+                                    <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center border-4 border-white shadow-md text-white font-black text-3xl">
+                                        {{ strtoupper(substr($siswa->user->name, 0, 2)) }}
+                                    </div>
+                                @endif
+                                <button class="absolute bottom-0 right-0 w-8 h-8 bg-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-white shadow-sm hover:bg-indigo-500 transition">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                </button>
+                            </div>
+                            <div class="text-center space-y-1">
+                                <h3 class="text-lg font-extrabold text-slate-800 leading-tight">{{ $siswa->user->name }}</h3>
+                                <p class="text-xs text-slate-400 font-semibold">SMA Negeri SI-ABSEN &bull; {{ $siswa->kelas->nama_kelas }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Profile Stats -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Total Kehadiran -->
+                            <div class="bg-indigo-950 text-white p-5 rounded-[24px] shadow-sm flex flex-col justify-between h-28">
+                                <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Total Kehadiran</p>
+                                <h3 class="text-2xl font-black tracking-tight mt-auto">{{ $kehadiranPercentage }}%</h3>
+                            </div>
+                            <!-- Poin Perilaku -->
+                            <div class="bg-white text-slate-700 p-5 rounded-[24px] border border-slate-100 shadow-xs flex flex-col justify-between h-28">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Poin Perilaku</p>
+                                <h3 class="text-2xl font-black text-emerald-600 tracking-tight mt-auto">150</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Settings (7 cols) -->
+                    <div class="lg:col-span-7 space-y-3">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pengaturan Akun</h3>
+                        
+                        <div class="bg-white rounded-[28px] border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden text-sm font-semibold text-slate-700">
+                            <!-- Informasi Pribadi -->
+                            <div @click="showPersonalInfoModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
+                                <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>Informasi Pribadi</span>
+                                <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                            <!-- Pengaturan Notifikasi -->
+                            <div @click="showNotificationModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
+                                <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>Pengaturan Notifikasi</span>
+                                <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                            <!-- Keamanan & Face ID -->
+                            <div @click="showFaceIdManageModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
+                                <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 009 14a13.92 13.92 0 01-2-7.3m3.44 14.44a13.947 13.947 0 005.003-9.571M19.04 12.04l.054-.09a13.916 13.916 0 00-1.094-11.23M19.04 12.04c0 1.29-.166 2.542-.48 3.738M19.04 12.04a13.96 13.96 0 01-3.003-9.571m-2 13.571a13.9 13.9 0 01-6-2.29M12 9a3 3 0 100-6 3 3 0 000 6z" /></svg>Keamanan & Face ID</span>
+                                <div class="flex items-center space-x-1">
+                                    <span class="text-[10px] text-indigo-600 font-bold mr-1">{{ $siswa->face_embedding ? 'Aktif' : 'Nonaktif' }}</span>
+                                    <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                </div>
+                            </div>
+                            <!-- Pusat Bantuan -->
+                            <div @click="showHelpModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
+                                <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>Pusat Bantuan</span>
+                                <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                            
+                            <!-- Logout Action Button -->
+                            <div @click="showLogoutModal = true" class="p-4 flex items-center justify-between hover:bg-rose-50 text-rose-600 cursor-pointer transition font-semibold">
+                                <span class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                    Keluar
+                                </span>
+                                <svg class="w-4 h-4 text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center pt-2 select-none">
+                    <p class="text-[9px] font-bold text-slate-300">Versi 2.4.0 (Build 82)</p>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Floating Bottom Navigation -->
+        <nav class="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-30 shrink-0 select-none">
+            <button @click="activeTab = 'dashboard'" class="flex flex-col items-center space-y-1 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition" :class="activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                </svg>
+                <span class="text-[10px] font-extrabold tracking-wide transition" :class="activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-500'">Dashboard</span>
+            </button>
+            
+            <button @click="activeTab = 'history'" class="flex flex-col items-center space-y-1 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition" :class="activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-[10px] font-extrabold tracking-wide transition" :class="activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-500'">History</span>
+            </button>
+
+            <button @click="activeTab = 'schedule'" class="flex flex-col items-center space-y-1 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition" :class="activeTab === 'schedule' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="text-[10px] font-extrabold tracking-wide transition" :class="activeTab === 'schedule' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-500'">Schedule</span>
+            </button>
+
+            <button @click="activeTab = 'profile'" class="flex flex-col items-center space-y-1 group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition" :class="activeTab === 'profile' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span class="text-[10px] font-extrabold tracking-wide transition" :class="activeTab === 'profile' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-500'">Profile</span>
+            </button>
+        </nav>
+
+        <!-- QR Code Scanner Modal -->
+        @if($showScannerModal)
+            <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true"
+                 x-data="{
+                     html5QrCode: null,
+                     hasFaceEmbedding: {{ $siswa->face_embedding ? 'true' : 'false' }},
+                     isFaceVerificationMode: false,
+                     statusText: 'Pindai QR Code kelas yang ditampilkan guru',
+                     faceStream: null,
+                     isFaceDetected: false,
+                     faceEmbedding: null,
+                     qrPayload: '',
+                     
+                     initScanner() {
+                         this.html5QrCode = new Html5Qrcode('webcam-portal-reader');
+                         this.html5QrCode.start(
+                             { facingMode: 'environment' },
+                             { 
+                                 fps: 15, 
+                                 qrbox: { width: 220, height: 220 },
+                                 aspectRatio: 1.0
+                             },
+                             (decodedText, decodedResult) => {
+                                 this.playBeep();
+                                 this.qrPayload = decodedText;
+
+                                 if (this.hasFaceEmbedding) {
+                                     this.html5QrCode.stop().then(() => {
+                                         this.isFaceVerificationMode = true;
+                                         this.statusText = 'QR Valid! Harap hadapkan kamera ke wajah Anda.';
+                                         this.initFaceVerification();
+                                     }).catch(err => {
+                                         console.error(err);
+                                         this.isFaceVerificationMode = true;
+                                         this.statusText = 'QR Valid! Harap hadapkan kamera ke wajah Anda.';
+                                         this.initFaceVerification();
+                                     });
+                                 } else {
+                                     this.html5QrCode.stop().then(() => {
+                                         $wire.prosesScanQrKelas(decodedText);
+                                     }).catch(err => {
+                                         console.error('Stop error:', err);
+                                         $wire.prosesScanQrKelas(decodedText);
+                                     });
+                                 }
+                             },
+                             (errorMessage) => {}
+                         ).catch(err => {
+                             console.error('Camera startup failed:', err);
+                             $wire.set('errorMessage', 'Gagal mengakses kamera. Pastikan browser diizinkan menggunakan kamera dan pastikan Anda menggunakan HTTPS.');
+                             $wire.set('showScannerModal', false);
+                         });
+                     },
+                     async initFaceVerification() {
+                         try {
+                             await window.__loadFaceModels();
+
+                             this.faceStream = await navigator.mediaDevices.getUserMedia({ 
+                                 video: { facingMode: 'user', width: 640, height: 480 } 
+                             });
+
+                             const video = this.$refs.faceVerifyVideo;
+                             video.srcObject = this.faceStream;
+                             await video.play();
+
+                             this.detectFaceVerifyLoop();
+                         } catch (err) {
+                             console.error(err);
+                             $wire.set('errorMessage', 'Gagal memuat kamera Face ID: ' + err.message);
+                             this.closeScanner();
+                         }
+                     },
+
+                     async detectFaceVerifyLoop() {
+                         const video = this.$refs.faceVerifyVideo;
+                         const canvas = this.$refs.faceVerifyCanvas;
+
+                         if (!video || !this.faceStream) return;
+
+                         const displaySize = { width: video.videoWidth || 320, height: video.videoHeight || 240 };
+                         faceapi.matchDimensions(canvas, displaySize);
+
+                         const interval = setInterval(async () => {
+                             if (!this.faceStream || !video) {
+                                 clearInterval(interval);
+                                 return;
+                             }
+
+                             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                                 .withFaceLandmarks(true)
+                                 .withFaceDescriptor();
+
+                             const ctx = canvas.getContext('2d');
+                             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                             if (detection) {
+                                 this.isFaceDetected = true;
+                                 this.statusText = 'Wajah terdeteksi! Memverifikasi...';
+                                 this.faceEmbedding = Array.from(detection.descriptor);
+
+                                 const resizedDetections = faceapi.resizeResults(detection, displaySize);
+                                 faceapi.draw.drawDetections(canvas, resizedDetections);
+
+                                 clearInterval(interval);
+                                 this.submitAttendance();
+                             } else {
+                                 this.isFaceDetected = false;
+                                 this.statusText = 'Posisikan wajah Anda di depan kamera depan';
+                             }
+                         }, 300);
+                     },
+                     submitAttendance() {
+                         if (this.faceStream) {
+                             this.faceStream.getTracks().forEach(track => track.stop());
+                             this.faceStream = null;
+                         }
+                         $wire.prosesScanQrKelas(this.qrPayload, JSON.stringify(this.faceEmbedding));
+                     },
+                     playBeep() {
+                         try {
+                             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                             const oscillator = audioCtx.createOscillator();
+                             const gainNode = audioCtx.createGain();
+                             oscillator.connect(gainNode);
+                             gainNode.connect(audioCtx.destination);
+                             oscillator.type = 'sine';
+                             oscillator.frequency.value = 880;
+                             gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                             oscillator.start();
+                             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                             oscillator.stop(audioCtx.currentTime + 0.15);
+                         } catch(e) {
+                             console.error(e);
+                         }
+                     },
+                     closeScanner() {
+                         if (this.faceStream) {
+                             this.faceStream.getTracks().forEach(track => track.stop());
+                             this.faceStream = null;
+                         }
+                         if (this.html5QrCode && this.html5QrCode.isScanning) {
+                             this.html5QrCode.stop().then(() => {
+                                 $wire.toggleScannerModal();
+                             }).catch(err => {
+                                 console.error(err);
+                                 $wire.toggleScannerModal();
+                             });
+                         } else {
+                             $wire.toggleScannerModal();
+                         }
+                     }
+                 }"
+                 x-init="setTimeout(() => initScanner(), 300)">
+                
+                <div class="flex items-center justify-center min-h-screen p-4 text-center">
+                    <div class="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-xs" @click="closeScanner()" aria-hidden="true"></div>
+                    
+                    <!-- Modal Box -->
+                    <div class="relative z-50 inline-block align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-[360px] border border-slate-100 animate-[fadeIn_0.2s_ease-out]">
+                        <div class="bg-white px-5 pt-5 pb-4">
+                            <div class="flex justify-between items-center pb-3.5 border-b border-slate-100">
+                                <h3 class="text-sm font-bold text-slate-800" id="modal-title">
+                                    Pindai QR Code & Face ID
+                                </h3>
+                                <button @click="closeScanner()" class="text-slate-400 hover:text-slate-600 focus:outline-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Camera Notice -->
+                            <div x-show="!isFaceVerificationMode" class="mt-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200/60 flex items-start space-x-2 text-left leading-normal shadow-sm">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div class="space-y-0.5 text-amber-900">
+                                    <p class="text-[10px] font-bold">Izin Kamera Diperlukan</p>
+                                    <p class="text-[9px] text-amber-800 font-semibold leading-normal">
+                                        Gunakan URL **HTTPS** agar fitur kamera berfungsi dengan baik.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Scanner Area -->
+                            <div class="mt-4 flex flex-col items-center justify-center space-y-3">
+                                <!-- QR Mode -->
+                                <div x-show="!isFaceVerificationMode" class="relative w-full max-w-[280px] bg-slate-950 rounded-2xl overflow-hidden aspect-square border border-slate-800 flex flex-col items-center justify-center p-3">
+                                    <div class="absolute inset-0 pointer-events-none border-2 border-indigo-500/20 rounded-2xl z-10">
+                                        <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_12px_rgba(99,102,241,0.8)] animate-[scanLaser_2s_infinite] absolute top-0"></div>
+                                    </div>
+                                    <div id="webcam-portal-reader" class="w-full h-full" style="border: none !important;"></div>
+                                </div>
+
+                                <!-- Face Verification Mode -->
+                                <div x-show="isFaceVerificationMode" class="face-video-container mx-auto">
+                                    <video x-ref="faceVerifyVideo" id="face-verify-video-el" class="scale-x-[-1]" playsinline muted></video>
+                                    <canvas x-ref="faceVerifyCanvas" class="scale-x-[-1]"></canvas>
+                                </div>
+                                
+                                <div class="text-center space-y-0.5">
+                                    <p class="text-[11px] font-semibold text-indigo-600 animate-pulse" x-text="statusText"></p>
+                                    <p class="text-[9px] text-slate-400" x-show="!isFaceVerificationMode">Scan QR Code kelas yang ditampilkan guru</p>
+                                    <p class="text-[9px] text-slate-400" x-show="isFaceVerificationMode">Dekatkan wajah Anda ke kamera depan</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 px-5 py-3 flex justify-end">
+                            <button @click="closeScanner()" type="button" 
+                                class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition focus:outline-none">
+                                Batal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Face ID Registration Modal -->
+        @if($showRegisterFaceModal)
+            <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-face-reg" role="dialog" aria-modal="true"
+                 x-data="{
+                     stream: null,
+                     isLoading: true,
+                     statusText: 'Memuat modul Face ID...',
+                     isFaceDetected: false,
+                     embedding: null,
+                     async initFaceReg() {
+                         try {
+                             this.statusText = 'Memuat modul pengenalan wajah...';
+                             await window.__loadFaceModels();
+
+                             this.statusText = 'Membuka kamera depan...';
+                             
+                             this.stream = await navigator.mediaDevices.getUserMedia({ 
+                                 video: { facingMode: 'user', width: 640, height: 480 } 
+                             });
+
+                             const video = this.$refs.faceRegVideo;
+                             video.srcObject = this.stream;
+                             await video.play();
+
+                             this.isLoading = false;
+                             this.statusText = 'Posisikan wajah Anda di tengah layar';
+                             this.detectFaceLoop();
+                         } catch (err) {
+                             console.error(err);
+                             $wire.set('errorMessage', 'Gagal memulai Face ID: ' + err.message);
+                             this.closeModal();
+                         }
+                     },
+                     loadScript(src) {
+                         return new Promise((resolve, reject) => {
+                             const s = document.createElement('script');
+                             s.src = src;
+                             s.onload = resolve;
+                             s.onerror = reject;
+                             document.head.appendChild(s);
+                         });
+                     },
+                     async detectFaceLoop() {
+                         const video = this.$refs.faceRegVideo;
+                         const canvas = this.$refs.faceRegCanvas;
+                         
+                         if (!video || !this.stream) return;
+
+                         const displaySize = { width: video.videoWidth || 320, height: video.videoHeight || 240 };
+                         faceapi.matchDimensions(canvas, displaySize);
+
+                         const interval = setInterval(async () => {
+                             if (!this.stream || !video) {
+                                 clearInterval(interval);
+                                 return;
+                             }
+
+                             const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                                 .withFaceLandmarks(true)
+                                 .withFaceDescriptor();
+
+                             const ctx = canvas.getContext('2d');
+                             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                             if (detection) {
+                                 this.isFaceDetected = true;
+                                 this.statusText = 'Wajah terdeteksi! Silakan klik Simpan Wajah.';
+                                 this.embedding = Array.from(detection.descriptor);
+
+                                 const resizedDetections = faceapi.resizeResults(detection, displaySize);
+                                 faceapi.draw.drawDetections(canvas, resizedDetections);
+                             } else {
+                                 this.isFaceDetected = false;
+                                 this.statusText = 'Posisikan wajah Anda dengan jelas di depan kamera';
+                             }
+                         }, 300);
+                     },
+                     saveFace() {
+                         if (this.embedding) {
+                             $wire.simpanFaceEmbedding(JSON.stringify(this.embedding));
+                             this.closeModal();
+                         }
+                     },
+                     closeModal() {
+                         if (this.stream) {
+                             this.stream.getTracks().forEach(track => track.stop());
+                             this.stream = null;
+                         }
+                         $wire.set('showRegisterFaceModal', false);
+                     }
+                 }"
+                 x-init="setTimeout(() => initFaceReg(), 300)">
+                
+                <div class="flex items-center justify-center min-h-screen p-4 text-center">
+                    <div class="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-xs" @click="closeModal()" aria-hidden="true"></div>
+
+                    <div class="relative z-50 inline-block align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-[360px] border border-slate-100 animate-[fadeIn_0.2s_ease-out]">
+                        <div class="bg-white px-5 pt-5 pb-4">
+                            <div class="flex justify-between items-center pb-3.5 border-b border-slate-100">
+                                <h3 class="text-sm font-bold text-slate-800">
+                                    Registrasi Face ID Anda
+                                </h3>
+                                <button @click="closeModal()" class="text-slate-400 hover:text-slate-600 focus:outline-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Status bar -->
+                            <div class="mt-3 p-2.5 rounded-2xl text-[10px] font-bold text-center"
+                                 :class="isFaceDetected ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : 'bg-slate-100 text-slate-700'">
+                                <span x-text="statusText"></span>
+                            </div>
+
+                            <!-- Video Area -->
+                            <div class="mt-4 flex flex-col items-center justify-center">
+                                <div class="face-video-container mx-auto">
+                                    <video x-ref="faceRegVideo" id="face-reg-video-el" class="scale-x-[-1]" playsinline muted></video>
+                                    <canvas x-ref="faceRegCanvas" class="scale-x-[-1]"></canvas>
+
+                                    <div x-show="isLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 text-white space-y-2 z-10">
+                                        <svg class="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span>{{ substr($j->jam_mulai, 0, 5) }} - {{ substr($j->jam_selesai, 0, 5) }} WIB</span>
+                                        <span class="text-[9px] text-slate-400">Menyiapkan Kamera...</span>
                                     </div>
                                 </div>
                             </div>
-
-                            <div>
-                                @if(in_array($j->id, $todayAbsensi))
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                                        <svg class="w-3.5 h-3.5 mr-1 text-emerald-600 animate-[bounce_1s_infinite]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        <span>Sudah Hadir</span>
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        Aktif
-                                    </span>
-                                @endif
-                            </div>
-
                         </div>
-                    @empty
-                        <div class="p-8 text-center text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto mb-2 text-slate-300">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
-                            </svg>
-                            <p class="text-sm font-medium">Tidak ada jadwal pelajaran hari ini.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
 
-            <!-- Right Side: Riwayat Absensi -->
-            <div class="space-y-4">
-                <h3 class="text-md font-bold text-slate-800 flex items-center space-x-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-indigo-600">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 2.24a.75.75 0 011.077-.191l3.47 2.445a.75.75 0 01.224.814l-.005.015a.75.75 0 01-1.078.191l-3.47-2.445a.75.75 0 01-.224-.814z" />
-                    </svg>
-                    <span>Kehadiran Terakhir</span>
-                </h3>
-
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-                    @forelse($riwayatAbsensi as $a)
-                        <div class="p-3 bg-slate-50/50 rounded-xl flex items-center justify-between border border-slate-100">
-                            <div class="space-y-0.5 min-w-0">
-                                <h4 class="font-bold text-slate-800 text-xs truncate">{{ $a->jadwalPelajaran->mataPelajaran->nama_mapel }}</h4>
-                                <p class="text-[10px] text-slate-400">{{ $a->created_at->diffForHumans() }}</p>
-                            </div>
-                            <div>
-                                @php
-                                    $badgeColor = match($a->status) {
-                                        'Hadir' => 'bg-emerald-50 text-emerald-700 border-emerald-200/50',
-                                        'Sakit' => 'bg-blue-50 text-blue-700 border-blue-200/50',
-                                        'Izin' => 'bg-amber-50 text-amber-700 border-amber-200/50',
-                                        'Alfa' => 'bg-red-50 text-red-700 border-red-200/50',
-                                        default => 'bg-slate-50 text-slate-700 border-slate-200/50'
-                                    };
-                                @endphp
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold border {{ $badgeColor }}">
-                                    {{ $a->status }}
-                                </span>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-xs text-center text-slate-400 py-6">Belum ada riwayat kehadiran.</p>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- QR Code Scanner Modal (Student Side Real-Time Webcam) -->
-    @if($showScannerModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true"
-             x-data="{
-                 html5QrCode: null,
-                 initScanner() {
-                     // Instantiate scanning engine on target div
-                     this.html5QrCode = new Html5Qrcode('webcam-portal-reader');
-
-                     // Start the camera directly without extra buttons/controls
-                     this.html5QrCode.start(
-                         { facingMode: 'environment' }, // Default to back camera
-                         { 
-                             fps: 15, 
-                             qrbox: { width: 220, height: 220 },
-                             aspectRatio: 1.0
-                         },
-                         (decodedText, decodedResult) => {
-                             // Success callback
-                             this.playBeep();
-                             
-                             // Call Livewire and clear camera stream
-                             this.html5QrCode.stop().then(() => {
-                                 $wire.prosesScanQrKelas(decodedText);
-                             }).catch(err => {
-                                 console.error('Stop error:', err);
-                                 $wire.prosesScanQrKelas(decodedText);
-                             });
-                         },
-                         (errorMessage) => {
-                             // Skip scan failures to keep console clean
-                         }
-                     ).catch(err => {
-                         console.error('Camera startup failed:', err);
-                         $wire.set('errorMessage', 'Gagal mengakses kamera. Pastikan browser diizinkan menggunakan kamera dan pastikan Anda menggunakan HTTPS (misal: Ngrok).');
-                         $wire.set('showScannerModal', false);
-                     });
-                 },
-                 playBeep() {
-                     try {
-                         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                         const oscillator = audioCtx.createOscillator();
-                         const gainNode = audioCtx.createGain();
-                         oscillator.connect(gainNode);
-                         gainNode.connect(audioCtx.destination);
-                         oscillator.type = 'sine';
-                         oscillator.frequency.value = 880; // A5 pitch
-                         gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                         oscillator.start();
-                         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                         oscillator.stop(audioCtx.currentTime + 0.15);
-                     } catch(e) {
-                         console.error(e);
-                     }
-                 },
-                 closeScanner() {
-                     if (this.html5QrCode && this.html5QrCode.isScanning) {
-                         this.html5QrCode.stop().then(() => {
-                             $wire.toggleScannerModal();
-                         }).catch(err => {
-                             console.error(err);
-                             $wire.toggleScannerModal();
-                         });
-                     } else {
-                         $wire.toggleScannerModal();
-                     }
-                 }
-             }"
-             x-init="setTimeout(() => initScanner(), 300)">
-            <!-- Backdrop -->
-            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-sm" @click="closeScanner()" aria-hidden="true"></div>
-
-                <!-- Spacer -->
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                <!-- Modal Box -->
-                <div class="relative z-10 inline-block align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-slate-100 animate-[fadeIn_0.2s_ease-out]">
-                    <div class="bg-white px-6 pt-6 pb-4 sm:p-6 sm:pb-4">
-                        <div class="flex justify-between items-center pb-4 border-b border-slate-100">
-                            <h3 class="text-lg font-bold text-slate-800" id="modal-title">
-                                Pindai QR Code Absensi
-                            </h3>
-                            <button @click="closeScanner()" class="text-slate-400 hover:text-slate-600 focus:outline-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                        <div class="bg-slate-50 px-5 py-3.5 flex justify-end space-x-2.5">
+                            <button @click="closeModal()" type="button" 
+                                class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-xs transition focus:outline-none">
+                                Batal
+                            </button>
+                            <button @click="saveFace()" type="button" :disabled="!isFaceDetected"
+                                class="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold px-5 py-2 rounded-xl text-xs transition focus:outline-none shadow-md">
+                                Simpan Wajah
                             </button>
                         </div>
-
-                        <!-- Camera Permission & HTTPS Notice -->
-                        <div class="mt-4 p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200/60 flex items-start space-x-2 text-left leading-normal shadow-sm">
-                            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div class="space-y-0.5 text-amber-900">
-                                <p class="text-xs font-bold">Izin Kamera Diperlukan</p>
-                                <p class="text-[11px] text-amber-800 font-medium">
-                                    Izinkan akses kamera di browser HP Anda. Jika menggunakan HP, pastikan Anda mengakses via URL **HTTPS** aman (seperti menggunakan terowongan <span class="font-mono bg-amber-100 border border-amber-200/50 px-1 py-0.5 rounded text-[10px]">Ngrok</span> atau <span class="font-mono bg-amber-100 border border-amber-200/50 px-1 py-0.5 rounded text-[10px]">Localtunnel</span>) agar sistem keamanan browser mengaktifkan kamera.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Scanner Area -->
-                        <div class="mt-6 flex flex-col items-center justify-center space-y-4">
-                            <div class="relative w-full max-w-sm bg-slate-950 rounded-2xl overflow-hidden aspect-square border border-slate-800 flex flex-col items-center justify-center p-4">
-                                <!-- Scanner Laser Overlay -->
-                                <div class="absolute inset-0 pointer-events-none border-2 border-indigo-500/20 rounded-2xl z-10">
-                                    <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_12px_rgba(99,102,241,0.8)] animate-[scanLaser_2s_infinite] absolute top-0"></div>
-                                </div>
-                                
-                                <div id="webcam-portal-reader" class="w-full h-full" style="border: none !important;"></div>
-                            </div>
-                            
-                            <div class="text-center space-y-1">
-                                <p class="text-xs font-semibold text-indigo-600">Scan QR Code kelas yang ditampilkan guru</p>
-                                <p class="text-[10px] text-slate-400">Pastikan kamera diizinkan pada browser HP Anda</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-50 px-6 py-4 flex justify-end">
-                        <button @click="closeScanner()" type="button" 
-                            class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-sm transition focus:outline-none">
-                            Batal
-                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-    @endif
+        @endif
 
-    <!-- CSS Animation / Scanner laser overlay -->
-    <style>
-        @keyframes scanLaser {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
-        }
-        #webcam-portal-reader video {
-            object-fit: cover !important;
-            border-radius: 1rem;
-            width: 100% !important;
-            height: 100% !important;
-        }
-    </style>
+        <!-- Profile Detail Modals -->
+        <!-- 1. Informasi Pribadi -->
+        <div x-show="showPersonalInfoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showPersonalInfoModal = false"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-left">
+                <h3 class="text-xs font-bold text-slate-800 border-b pb-1.5 uppercase tracking-wider">Informasi Pribadi</h3>
+                <div class="space-y-3 text-[11px] text-slate-600">
+                    <div>
+                        <p class="font-bold text-slate-400 uppercase text-[8px]">Nama Lengkap</p>
+                        <p class="font-semibold text-slate-700">{{ $siswa->user->name }}</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-400 uppercase text-[8px]">NISN</p>
+                        <p class="font-mono font-semibold text-slate-700">{{ $siswa->nisn }}</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-400 uppercase text-[8px]">Kelas</p>
+                        <p class="font-semibold text-slate-700">{{ $siswa->kelas->nama_kelas }}</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-400 uppercase text-[8px]">Email</p>
+                        <p class="font-semibold text-slate-700">{{ $siswa->user->email }}</p>
+                    </div>
+                </div>
+                <button @click="showPersonalInfoModal = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[11px] transition">Tutup</button>
+            </div>
+        </div>
+
+        <!-- 2. Pengaturan Notifikasi -->
+        <div x-show="showNotificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showNotificationModal = false"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
+                <div class="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                    <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                </div>
+                <h3 class="text-xs font-bold text-slate-800">Notifikasi Sistem</h3>
+                <p class="text-[10px] text-slate-500 leading-normal">Notifikasi absensi dan jadwal telah diaktifkan otomatis di perangkat Anda.</p>
+                <button @click="showNotificationModal = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[11px] transition">Baik</button>
+            </div>
+        </div>
+
+        <!-- 3. Pusat Bantuan -->
+        <div x-show="showHelpModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showHelpModal = false"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
+                <div class="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                    <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                </div>
+                <h3 class="text-xs font-bold text-slate-800">Pusat Bantuan</h3>
+                <p class="text-[10px] text-slate-500 leading-normal">Ada kendala presensi atau Face ID? Silakan hubungi operator tata usaha sekolah Anda.</p>
+                <button @click="showHelpModal = false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-[11px] transition">Hubungi Operator</button>
+            </div>
+        </div>
+
+        <!-- 4. Keamanan & Face ID -->
+        <div x-show="showFaceIdManageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showFaceIdManageModal = false"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
+                <div class="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                    <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 009 14a13.92 13.92 0 01-2-7.3m3.44 14.44a13.947 13.947 0 005.003-9.571M19.04 12.04l.054-.09a13.916 13.916 0 00-1.094-11.23M19.04 12.04c0 1.29-.166 2.542-.48 3.738M19.04 12.04a13.96 13.96 0 01-3.003-9.571m-2 13.571a13.9 13.9 0 01-6-2.29M12 9a3 3 0 100-6 3 3 0 000 6z" /></svg>
+                </div>
+                <h3 class="text-xs font-bold text-slate-800">Manajemen Face ID</h3>
+                @if($siswa->face_embedding)
+                    <p class="text-[10px] text-slate-500 leading-normal">Face ID Anda telah aktif. Anda dapat menyetel ulang data wajah Anda dengan menghapusnya terlebih dahulu.</p>
+                    <div class="space-y-2 pt-1.5">
+                        <button wire:click="hapusFaceEmbedding" @click="showFaceIdManageModal = false" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-xl text-[11px] transition">Hapus Face ID</button>
+                        <button @click="showFaceIdManageModal = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[11px] transition">Batal</button>
+                    </div>
+                @else
+                    <p class="text-[10px] text-slate-500 leading-normal">Anda belum mendaftarkan wajah Anda. Silakan daftarkan wajah Anda untuk melakukan absensi lebih cepat.</p>
+                    <div class="space-y-2 pt-1.5">
+                        <button @click="showFaceIdManageModal = false; showRegisterFaceModal = true" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-[11px] transition">Daftarkan Sekarang</button>
+                        <button @click="showFaceIdManageModal = false" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[11px] transition">Batal</button>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- 5. Konfirmasi Keluar (Logout) -->
+        <div x-show="showLogoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showLogoutModal = false"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center animate-[scaleIn_0.2s_ease-out]">
+                <div class="w-9 h-9 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                    <svg class="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </div>
+                <div class="space-y-0.5">
+                    <h3 class="text-xs font-bold text-slate-800">Konfirmasi Keluar</h3>
+                    <p class="text-[10px] text-slate-500 leading-normal">Apakah Anda yakin ingin keluar dari akun Anda?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1.5">
+                    <button @click="showLogoutModal = false" type="button" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-[11px] transition">Batal</button>
+                    <form action="{{ route('logout') }}" method="POST" id="logout-form-profile" class="w-full">
+                        @csrf
+                        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-xl text-[11px] transition shadow-sm">Ya, Keluar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 </div>

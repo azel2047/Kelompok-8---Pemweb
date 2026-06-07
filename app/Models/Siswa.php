@@ -19,6 +19,11 @@ class Siswa extends Model
         'nisn',
         'qr_code_token',
         'foto_profil',
+        'face_embedding',
+    ];
+
+    protected $casts = [
+        'face_embedding' => 'array',
     ];
 
     public function user(): BelongsTo

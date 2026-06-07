@@ -16,7 +16,7 @@ class AuthTest extends TestCase
     {
         $response = $this->get('/login');
         $response->assertStatus(200);
-        $response->assertSee('Login Siswa');
+        $response->assertSee('EduAttend');
     }
 
     public function test_siswa_can_login_and_is_redirected_to_portal()

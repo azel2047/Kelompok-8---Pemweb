@@ -13,6 +13,7 @@ class PortalSiswa extends Component
 {
     public $siswa;
     public $showScannerModal = false;
+    public $showRegisterFaceModal = false;
     public $successMessage = '';
     public $errorMessage = '';
 
@@ -42,10 +43,26 @@ class PortalSiswa extends Component
         $this->errorMessage = '';
     }
 
-    public function prosesScanQrKelas($payload)
+    public function prosesScanQrKelas($payload, $scannedEmbedding = null)
     {
         $this->successMessage = '';
         $this->errorMessage = '';
+
+        // Face ID verification if registered
+        if ($this->siswa->face_embedding) {
+            if (empty($scannedEmbedding)) {
+                $this->errorMessage = 'Verifikasi Face ID diperlukan untuk melakukan absensi.';
+                $this->showScannerModal = false;
+                return;
+            }
+
+            $distance = $this->calculateEuclideanDistance($this->siswa->face_embedding, $scannedEmbedding);
+            if ($distance > 0.6) {
+                $this->errorMessage = 'Absensi Gagal: Wajah tidak cocok dengan Face ID terdaftar (selisih: ' . round($distance, 3) . ').';
+                $this->showScannerModal = false;
+                return;
+            }
+        }
 
         $jadwalId = $payload;
 
@@ -141,6 +158,64 @@ class PortalSiswa extends Component
         }
     }
 
+    public function simpanFaceEmbedding($embedding)
+    {
+        try {
+            $embeddingArray = is_string($embedding) ? json_decode($embedding, true) : $embedding;
+            if (!is_array($embeddingArray) || count($embeddingArray) !== 128) {
+                $this->errorMessage = 'Vektor wajah tidak valid. Pastikan wajah terdeteksi dengan jelas.';
+                return;
+            }
+
+            $this->siswa->update([
+                'face_embedding' => $embeddingArray
+            ]);
+
+            \App\Models\AuditLog::create([
+                'aktivitas' => "Siswa ID {$this->siswa->id} ({$this->siswa->user->name}) sukses mendaftarkan Face ID.",
+            ]);
+
+            $this->successMessage = 'Face ID berhasil didaftarkan! Sekarang absensi Anda memerlukan verifikasi wajah.';
+            $this->showRegisterFaceModal = false;
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Gagal menyimpan Face ID: ' . $e->getMessage();
+        }
+    }
+
+    public function hapusFaceEmbedding()
+    {
+        try {
+            $this->siswa->update([
+                'face_embedding' => null
+            ]);
+            
+            \App\Models\AuditLog::create([
+                'aktivitas' => "Siswa ID {$this->siswa->id} ({$this->siswa->user->name}) menghapus data Face ID.",
+            ]);
+
+            $this->successMessage = 'Face ID berhasil dihapus.';
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Gagal menghapus Face ID: ' . $e->getMessage();
+        }
+    }
+
+    private function calculateEuclideanDistance($registered, $scanned)
+    {
+        $registered = is_string($registered) ? json_decode($registered, true) : $registered;
+        $scanned = is_string($scanned) ? json_decode($scanned, true) : $scanned;
+
+        if (!is_array($registered) || !is_array($scanned) || count($registered) !== count($scanned) || count($registered) === 0) {
+            return 9.9;
+        }
+
+        $sum = 0.0;
+        foreach ($registered as $i => $val) {
+            $diff = $val - $scanned[$i];
+            $sum += $diff * $diff;
+        }
+        return sqrt($sum);
+    }
+
     public function render()
     {
         // Get today's schedule
@@ -167,18 +242,69 @@ class PortalSiswa extends Component
             ->pluck('jadwal_id')
             ->toArray();
 
-        // Get recent attendance logs for this student
-        $riwayatAbsensi = Absensi::with('jadwalPelajaran.mataPelajaran')
+        // Calculate attendance stats this month
+        $absensiBulanIni = Absensi::with('jadwalPelajaran')
+            ->where('siswa_id', $this->siswa->id)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->get();
+
+        $hadirBulanIniCount = 0;
+        $tepatWaktuCount = 0;
+        $terlambatCount = 0;
+        $izinSakitCount = 0;
+
+        foreach ($absensiBulanIni as $absen) {
+            if (in_array($absen->status, ['Sakit', 'Izin'])) {
+                $izinSakitCount++;
+            } elseif ($absen->status === 'Hadir') {
+                $hadirBulanIniCount++;
+
+                $jadwal = $absen->jadwalPelajaran;
+                if ($jadwal) {
+                    $checkinTime = $absen->created_at->format('H:i:s');
+                    $startTimePlus15 = date('H:i:s', strtotime($jadwal->jam_mulai . ' +15 minutes'));
+                    if ($checkinTime > $startTimePlus15) {
+                        $terlambatCount++;
+                    } else {
+                        $tepatWaktuCount++;
+                    }
+                } else {
+                    $tepatWaktuCount++;
+                }
+            }
+        }
+
+        $kehadiranPercentage = $hadirBulanIniCount > 0 ? round(($hadirBulanIniCount / 20) * 100, 1) : 0;
+        if ($kehadiranPercentage > 100) $kehadiranPercentage = 100;
+
+        // Get full schedule for all days of the week
+        $jadwalSeminggu = JadwalPelajaran::with('mataPelajaran')
+            ->where('kelas_id', $this->siswa->kelas_id)
+            ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 WHEN 'Minggu' THEN 7 ELSE 8 END")
+            ->orderBy('jam_mulai', 'asc')
+            ->get();
+
+        // Get all time history
+        $riwayatAbsensiLengkap = Absensi::with('jadwalPelajaran.mataPelajaran')
             ->where('siswa_id', $this->siswa->id)
             ->orderBy('created_at', 'desc')
-            ->take(5)
             ->get();
+
+        $defaultSelectedDay = $today === 'Minggu' ? 'Senin' : $today;
 
         return view('livewire.portal-siswa', [
             'jadwalHariIni' => $jadwalHariIni,
-            'riwayatAbsensi' => $riwayatAbsensi,
-            'hariIni' => $today,
             'todayAbsensi' => $todayAbsensi,
+            'hadirBulanIniCount' => $hadirBulanIniCount,
+            'tepatWaktuCount' => $tepatWaktuCount,
+            'terlambatCount' => $terlambatCount,
+            'izinSakitCount' => $izinSakitCount,
+            'kehadiranPercentage' => $kehadiranPercentage,
+            'jadwalSeminggu' => $jadwalSeminggu,
+            'riwayatAbsensiLengkap' => $riwayatAbsensiLengkap,
+            'hariIni' => $today,
+            'defaultSelectedDay' => $defaultSelectedDay,
         ])->layout('layouts.app');
     }
 }
