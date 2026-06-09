@@ -199,6 +199,36 @@ class PortalSiswa extends Component
         }
     }
 
+    public function ikutiEkstrakurikuler($ekstrakurikulerId)
+    {
+        try {
+            $this->siswa->ekstrakurikulers()->attach($ekstrakurikulerId);
+            
+            \App\Models\AuditLog::create([
+                'aktivitas' => "Siswa ID {$this->siswa->id} ({$this->siswa->user->name}) mendaftar ekstrakurikuler ID {$ekstrakurikulerId}.",
+            ]);
+
+            $this->successMessage = 'Berhasil mendaftar ekstrakurikuler!';
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Gagal mendaftar ekstrakurikuler: ' . $e->getMessage();
+        }
+    }
+
+    public function keluarEkstrakurikuler($ekstrakurikulerId)
+    {
+        try {
+            $this->siswa->ekstrakurikulers()->detach($ekstrakurikulerId);
+            
+            \App\Models\AuditLog::create([
+                'aktivitas' => "Siswa ID {$this->siswa->id} ({$this->siswa->user->name}) keluar dari ekstrakurikuler ID {$ekstrakurikulerId}.",
+            ]);
+
+            $this->successMessage = 'Berhasil keluar dari ekstrakurikuler.';
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Gagal keluar dari ekstrakurikuler: ' . $e->getMessage();
+        }
+    }
+
     private function calculateEuclideanDistance($registered, $scanned)
     {
         $registered = is_string($registered) ? json_decode($registered, true) : $registered;
@@ -293,6 +323,13 @@ class PortalSiswa extends Component
 
         $defaultSelectedDay = $today === 'Minggu' ? 'Senin' : $today;
 
+        // Fetch registered extracurricular activities
+        $ekstrakurikulerSiswa = $this->siswa->ekstrakurikulers()->get();
+
+        // Fetch extracurriculars NOT joined by the student
+        $siswaJoinedEkskulIds = $ekstrakurikulerSiswa->pluck('id')->toArray();
+        $ekstrakurikulerTersedia = \App\Models\Ekstrakurikuler::whereNotIn('id', $siswaJoinedEkskulIds)->get();
+
         return view('livewire.portal-siswa', [
             'jadwalHariIni' => $jadwalHariIni,
             'todayAbsensi' => $todayAbsensi,
@@ -305,6 +342,8 @@ class PortalSiswa extends Component
             'riwayatAbsensiLengkap' => $riwayatAbsensiLengkap,
             'hariIni' => $today,
             'defaultSelectedDay' => $defaultSelectedDay,
+            'ekstrakurikulerSiswa' => $ekstrakurikulerSiswa,
+            'ekstrakurikulerTersedia' => $ekstrakurikulerTersedia,
         ])->layout('layouts.app');
     }
 }

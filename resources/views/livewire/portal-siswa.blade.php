@@ -343,6 +343,78 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Ekstrakurikuler Saya (Many-to-Many Display & Registration) -->
+                <div class="bg-white p-5 md:p-6 rounded-[28px] border border-slate-100 shadow-xs space-y-5">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-6.75a1.125 1.125 0 00-1.125 1.125v3.375m9 0h-9M9 10.5h.008v.008H9V10.5zm3 0h.008v.008H12V10.5zm3 0h.008v.008H15V10.5z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-sm font-extrabold text-slate-800 tracking-tight">Manajemen Kegiatan Ekstrakurikuler</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Kolom Kiri: Ekskul yang Sedang Diikuti -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ekstrakurikuler yang Diikuti</h4>
+                                <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100/50">
+                                    {{ $ekstrakurikulerSiswa->count() }} Terdaftar
+                                </span>
+                            </div>
+                            <div class="space-y-2.5">
+                                @forelse($ekstrakurikulerSiswa as $ekskul)
+                                    <div class="bg-slate-50 border border-slate-100/50 p-4 rounded-2xl flex items-center justify-between group animate-[fadeIn_0.15s_ease-out]">
+                                        <div class="space-y-0.5 overflow-hidden pr-2">
+                                            <h5 class="text-xs font-black text-slate-800 truncate">{{ $ekskul->nama_ekskul }}</h5>
+                                            <p class="text-[10px] text-slate-400 font-semibold truncate">Pembina: {{ $ekskul->pembina }}</p>
+                                        </div>
+                                        <button wire:click="keluarEkstrakurikuler({{ $ekskul->id }})" 
+                                                class="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100/60 transition shrink-0">
+                                            Keluar
+                                        </button>
+                                    </div>
+                                @empty
+                                    <div class="py-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center space-y-1 bg-slate-50/20">
+                                        <p class="text-xs font-bold text-slate-500">Belum mengikuti ekskul</p>
+                                        <p class="text-[10px] text-slate-400">Silakan daftar pada daftar ekskul tersedia di sebelah kanan.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <!-- Kolom Kanan: Ekskul yang Tersedia Untuk Diikuti -->
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ekstrakurikuler yang Tersedia</h4>
+                                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100/50">
+                                    {{ $ekstrakurikulerTersedia->count() }} Tersedia
+                                </span>
+                            </div>
+                            <div class="space-y-2.5">
+                                @forelse($ekstrakurikulerTersedia as $ekskul)
+                                    <div class="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between group animate-[fadeIn_0.15s_ease-out]">
+                                        <div class="space-y-0.5 overflow-hidden pr-2">
+                                            <h5 class="text-xs font-black text-slate-800 truncate group-hover:text-indigo-600 transition">{{ $ekskul->nama_ekskul }}</h5>
+                                            <p class="text-[10px] text-slate-400 font-semibold truncate">Pembina: {{ $ekskul->pembina }}</p>
+                                        </div>
+                                        <button wire:click="ikutiEkstrakurikuler({{ $ekskul->id }})" 
+                                                class="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white bg-indigo-950 hover:bg-indigo-900 transition shrink-0 shadow-sm shadow-indigo-100">
+                                            Daftar / Ikuti
+                                        </button>
+                                    </div>
+                                @empty
+                                    <div class="py-6 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center space-y-1 bg-slate-50/20">
+                                        <p class="text-xs font-bold text-slate-500">Semua Ekskul Diikuti</p>
+                                        <p class="text-[10px] text-slate-400">Hebat! Anda telah terdaftar di semua ekstrakurikuler sekolah.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB 2: RIWAYAT ABSENSI -->

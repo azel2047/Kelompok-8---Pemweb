@@ -68,7 +68,7 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => 'Siswa',
         ]);
-        \App\Models\Siswa::create([
+        $siswa1 = \App\Models\Siswa::create([
             'user_id' => $userSiswa1->id,
             'kelas_id' => $kelas1->id,
             'nisn' => '1234567890',
@@ -83,12 +83,30 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => 'Siswa',
         ]);
-        \App\Models\Siswa::create([
+        $siswa2 = \App\Models\Siswa::create([
             'user_id' => $userSiswa2->id,
             'kelas_id' => $kelas1->id,
             'nisn' => '1234567891',
             'qr_code_token' => 'TOKEN_SITI_AMINAH_88',
             'foto_profil' => null,
         ]);
+
+        // Create Ekstrakurikuler
+        $ekskul1 = \App\Models\Ekstrakurikuler::create([
+            'nama_ekskul' => 'Pramuka',
+            'pembina' => 'Pak Budi Guru',
+        ]);
+        $ekskul2 = \App\Models\Ekstrakurikuler::create([
+            'nama_ekskul' => 'PMR',
+            'pembina' => 'Ibu Siti Aminah',
+        ]);
+        $ekskul3 = \App\Models\Ekstrakurikuler::create([
+            'nama_ekskul' => 'Klub Basket',
+            'pembina' => 'Pak Jaka',
+        ]);
+
+        // Attach Siswa to Ekstrakurikuler
+        $siswa1->ekstrakurikuler()->attach([$ekskul1->id, $ekskul3->id]);
+        $siswa2->ekstrakurikuler()->attach([$ekskul1->id, $ekskul2->id]);
     }
 }
