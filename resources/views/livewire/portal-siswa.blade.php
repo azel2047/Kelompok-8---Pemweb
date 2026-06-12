@@ -55,6 +55,10 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
         #webcam-portal-reader video {
             object-fit: cover !important;
             border-radius: 1.5rem;
@@ -106,13 +110,27 @@
             window.__loadFaceModels = async function() {
                 if (window.__faceModelsLoaded) return;
                 await window.__loadFaceApi();
+                // Menggunakan CDN jsDelivr dari Vlad Mandic agar server php artisan serve (single-thread) tidak terbebani file besar
+                // dan menghindari error landing page localtunnel/ngrok yang mengembalikan HTML bukan JSON.
+                const CDN_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-                    faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                    faceapi.nets.tinyFaceDetector.loadFromUri(CDN_URL),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(CDN_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(CDN_URL)
                 ]);
                 window.__faceModelsLoaded = true;
             };
+
+            // Pre-load model di background setelah halaman selesai dirender
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    window.__loadFaceModels().then(() => {
+                        console.log('Face models preloaded successfully in background.');
+                    }).catch(err => {
+                        console.error('Failed to preload face models:', err);
+                    });
+                }, 2000); // Tunggu 2 detik agar tidak mengganggu loading awal halaman
+            });
         </script>
     @endpush
 
@@ -206,42 +224,49 @@
             </button>
         </header>
 
-        <!-- Floating Alert Toast Notification -->
+        <!-- Centered Modal Alert Notification -->
         @if($successMessage || $errorMessage)
-            <div class="absolute top-4 left-4 right-4 md:left-auto md:right-8 md:top-6 z-40 max-w-sm w-full mx-auto animate-[slideInDown_0.3s_ease-out]">
-                @if($successMessage)
-                    <div class="bg-emerald-600 text-white rounded-2xl shadow-xl p-3.5 flex items-start space-x-2 border border-emerald-500 text-xs">
-                        <svg class="w-5 h-5 shrink-0 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div class="flex-grow">
-                            <p class="font-bold">Berhasil</p>
-                            <p class="text-[11px] text-emerald-100">{{ $successMessage }}</p>
-                        </div>
-                        <button wire:click="$set('successMessage', '')" class="text-white/80 hover:text-white">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                @endif
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4" 
+                 x-data="{ open: true }" 
+                 x-show="open" 
+                 x-init="$watch('$wire.successMessage', value => { if(value) open = true }); $watch('$wire.errorMessage', value => { if(value) open = true })">
+                <!-- Backdrop -->
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300" @click="open = false; $wire.set('successMessage', ''); $wire.set('errorMessage', '')"></div>
 
-                @if($errorMessage)
-                    <div class="bg-rose-600 text-white rounded-2xl shadow-xl p-3.5 flex items-start space-x-2 border border-rose-500 text-xs mt-1">
-                        <svg class="w-5 h-5 shrink-0 text-rose-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div class="flex-grow">
-                            <p class="font-bold">Pemberitahuan</p>
-                            <p class="text-[11px] text-rose-100">{{ $errorMessage }}</p>
-                        </div>
-                        <button wire:click="$set('errorMessage', '')" class="text-white/80 hover:text-white">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <!-- Modal Content Card -->
+                <div class="bg-white rounded-[32px] max-w-sm w-full p-6 md:p-8 text-center shadow-2xl border border-slate-100 z-10 transform transition-all select-none animate-[zoomIn_0.25s_ease-out]">
+                    @if($successMessage)
+                        <!-- Animated Success Icon -->
+                        <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-50 border-4 border-emerald-100 text-emerald-600 mb-6 animate-[bounce_1s_infinite]">
+                            <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight mb-2">Berhasil!</h3>
+                        <p class="text-xs md:text-sm text-slate-500 font-semibold px-2 leading-relaxed mb-6">{{ $successMessage }}</p>
+                        
+                        <button wire:click="$set('successMessage', '')" @click="open = false" 
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-4 px-6 rounded-2xl transition shadow-md shadow-emerald-100">
+                            Selesai & Tutup
                         </button>
-                    </div>
-                @endif
+                    @endif
+
+                    @if($errorMessage)
+                        <!-- Animated Error Icon -->
+                        <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-rose-50 border-4 border-rose-100 text-rose-600 mb-6 animate-[pulse_1.5s_infinite]">
+                            <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight mb-2">Pemberitahuan</h3>
+                        <p class="text-xs md:text-sm text-slate-500 font-semibold px-2 leading-relaxed mb-6">{{ $errorMessage }}</p>
+                        
+                        <button wire:click="$set('errorMessage', '')" @click="open = false" 
+                                class="w-full bg-indigo-950 hover:bg-indigo-900 text-white font-extrabold text-sm py-4 px-6 rounded-2xl transition shadow-md shadow-indigo-900/10">
+                            Mengerti
+                        </button>
+                    @endif
+                </div>
             </div>
         @endif
 
@@ -918,7 +943,6 @@
                                 <div class="space-y-0.5 text-amber-900">
                                     <p class="text-[10px] font-bold">Izin Kamera Diperlukan</p>
                                     <p class="text-[9px] text-amber-800 font-semibold leading-normal">
-                                        Gunakan URL **HTTPS** agar fitur kamera berfungsi dengan baik.
                                     </p>
                                 </div>
                             </div>
