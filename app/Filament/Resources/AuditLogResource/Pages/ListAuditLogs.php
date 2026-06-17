@@ -13,7 +13,7 @@ class ListAuditLogs extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Tombol New Audit Log dinonaktifkan agar data log aktivitas murni dari sistem
         ];
     }
 }

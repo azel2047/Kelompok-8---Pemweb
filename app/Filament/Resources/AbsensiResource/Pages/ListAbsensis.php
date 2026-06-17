@@ -13,7 +13,7 @@ class ListAbsensis extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Tombol New Absensi dinonaktifkan agar tidak bisa dimanipulasi manual lewat admin
         ];
     }
 }

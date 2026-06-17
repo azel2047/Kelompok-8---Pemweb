@@ -3,15 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MataPelajaranResource\Pages;
-use App\Filament\Resources\MataPelajaranResource\RelationManagers;
 use App\Models\MataPelajaran;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\FileUpload; // <-- Import Utama File Upload Manual
 
 class MataPelajaranResource extends Resource
 {
@@ -33,6 +31,16 @@ class MataPelajaranResource extends Resource
                 Forms\Components\TextInput::make('kode_mapel')
                     ->required()
                     ->maxLength(255),
+                
+                // INPUT FILE UPLOAD UTAMA DARI LAPTOP LU
+                FileUpload::make('deskripsi_mapel_opsional')
+                    ->label('Upload Banner Pengumuman Sekolah')
+                    ->image() 
+                    ->disk('public_custom') 
+                    ->directory('images') 
+                    ->preserveFilenames() 
+                    ->visibility('public')
+                    ->maxSize(2048), // Batas aman 2MB
             ]);
     }
 
@@ -40,30 +48,13 @@ class MataPelajaranResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nama_mapel')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('kode_mapel')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
+                Tables\Columns\TextColumn::make('nama_mapel')->searchable(),
+                Tables\Columns\TextColumn::make('kode_mapel')->searchable(),
+                Tables\Columns\ImageColumn::make('deskripsi_mapel_opsional')
+                    ->label('Banner')
+                    ->disk('public_custom'),
             ])
             ->actions([
-                Tables\Actions\Action::make('showQr')
-                    ->label('QR Absen')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('success')
-                    ->modalHeading(fn ($record) => "QR Code Absensi: {$record->nama_mapel}")
-                    ->modalContent(fn ($record) => view('filament.components.qr-modal', ['record' => $record]))
-                    ->modalSubmitAction(false),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -72,13 +63,6 @@ class MataPelajaranResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array

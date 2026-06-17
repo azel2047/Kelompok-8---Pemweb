@@ -34,4 +34,9 @@ Route::middleware(['auth'])->group(function () {
     })->name('admin.jadwal.qr');
 });
 
-
+// JALUR PINTAS PEMBERSIH CACHE VIA URL BY MULTI-AGENT AI
+Route::get('/bersihin-cache-sekarang', function () {
+    \Illuminate\Support\Facades\Artisan::call('view:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    return 'Mantap Cuk! Semua cache view dan config di hostingan sukses dihancurkan total!';
+});

@@ -88,9 +88,7 @@
     </style>
 
     @push('scripts')
-        <!-- html5-qrcode library -->
         <script src="https://unpkg.com/html5-qrcode"></script>
-        <!-- face-api.js is loaded lazily when Face ID is needed -->
         <script>
             window.__faceModelsLoaded = false;
             window.__faceApiReady = false;
@@ -110,8 +108,6 @@
             window.__loadFaceModels = async function() {
                 if (window.__faceModelsLoaded) return;
                 await window.__loadFaceApi();
-                // Menggunakan CDN jsDelivr dari Vlad Mandic agar server php artisan serve (single-thread) tidak terbebani file besar
-                // dan menghindari error landing page localtunnel/ngrok yang mengembalikan HTML bukan JSON.
                 const CDN_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri(CDN_URL),
@@ -121,7 +117,6 @@
                 window.__faceModelsLoaded = true;
             };
 
-            // Pre-load model di background setelah halaman selesai dirender
             window.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     window.__loadFaceModels().then(() => {
@@ -129,15 +124,13 @@
                     }).catch(err => {
                         console.error('Failed to preload face models:', err);
                     });
-                }, 2000); // Tunggu 2 detik agar tidak mengganggu loading awal halaman
+                }, 2000);
             });
         </script>
     @endpush
 
-    <!-- Desktop Left Sidebar -->
     <aside class="hidden md:flex md:w-64 md:flex-col md:h-screen md:sticky md:top-0 bg-white border-r border-slate-100 shrink-0 text-slate-700 z-30 select-none p-5 justify-between">
         <div class="space-y-6">
-            <!-- Branding -->
             <div class="flex items-center space-x-2.5">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-extrabold text-base shadow-md shadow-indigo-100">
                     E
@@ -145,7 +138,6 @@
                 <span class="text-lg font-black text-slate-800 tracking-tight">EduAttend</span>
             </div>
 
-            <!-- Student Profile Summary -->
             <div class="bg-slate-50/70 border border-slate-100 p-4 rounded-2xl flex items-center space-x-3">
                 @if($siswa->foto_profil)
                     <img src="{{ asset('storage/' . $siswa->foto_profil) }}" alt="{{ $siswa->user->name }}" class="w-10 h-10 rounded-full object-cover">
@@ -163,7 +155,6 @@
                 </div>
             </div>
 
-            <!-- Nav Links -->
             <nav class="space-y-1 text-xs font-bold text-slate-600">
                 <button @click="activeTab = 'dashboard'" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-slate-50"
                         :class="activeTab === 'dashboard' ? 'text-indigo-600 bg-indigo-50/60' : ''">
@@ -196,7 +187,6 @@
             </nav>
         </div>
 
-        <!-- Logout Sidebar Link -->
         <button @click="showLogoutModal = true" class="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl transition hover:bg-rose-50 text-rose-600 text-xs font-bold">
             <svg class="w-4.5 h-4.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -205,10 +195,8 @@
         </button>
     </aside>
 
-    <!-- Main View Shell -->
     <div class="flex-grow flex flex-col min-h-screen relative overflow-hidden">
         
-        <!-- Mobile Header -->
         <header class="bg-white px-5 py-3.5 flex md:hidden justify-between items-center border-b border-slate-100 sticky top-0 z-20 shrink-0">
             <div class="flex items-center space-x-2">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-200">
@@ -224,19 +212,15 @@
             </button>
         </header>
 
-        <!-- Centered Modal Alert Notification -->
         @if($successMessage || $errorMessage)
             <div class="fixed inset-0 z-50 flex items-center justify-center p-4" 
                  x-data="{ open: true }" 
                  x-show="open" 
                  x-init="$watch('$wire.successMessage', value => { if(value) open = true }); $watch('$wire.errorMessage', value => { if(value) open = true })">
-                <!-- Backdrop -->
                 <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300" @click="open = false; $wire.set('successMessage', ''); $wire.set('errorMessage', '')"></div>
 
-                <!-- Modal Content Card -->
                 <div class="bg-white rounded-[32px] max-w-sm w-full p-6 md:p-8 text-center shadow-2xl border border-slate-100 z-10 transform transition-all select-none animate-[zoomIn_0.25s_ease-out]">
                     @if($successMessage)
-                        <!-- Animated Success Icon -->
                         <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-50 border-4 border-emerald-100 text-emerald-600 mb-6 animate-[bounce_1s_infinite]">
                             <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -252,7 +236,6 @@
                     @endif
 
                     @if($errorMessage)
-                        <!-- Animated Error Icon -->
                         <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-rose-50 border-4 border-rose-100 text-rose-600 mb-6 animate-[pulse_1.5s_infinite]">
                             <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -270,12 +253,9 @@
             </div>
         @endif
 
-        <!-- Main Screen Scroll Container -->
         <div class="flex-grow overflow-y-auto pb-24 md:pb-8 px-4 py-5 md:px-8 md:py-6 space-y-6 scrollbar-none">
 
-            <!-- TAB 1: DASHBOARD UTAMA -->
             <div x-show="activeTab === 'dashboard'" class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <!-- Profile Greeting -->
                 <div class="flex justify-between items-center bg-white p-5 md:p-6 rounded-[28px] border border-slate-100 shadow-xs">
                     <div>
                         <h2 class="text-base md:text-xl font-extrabold text-slate-800 tracking-tight">Selamat Datang, {{ $siswa->user->name }}!</h2>
@@ -287,11 +267,38 @@
                     </span>
                 </div>
 
-                <!-- Main Content Grid -->
+                @php
+                    $dirPath = base_path('../public_html/images/');
+                    if (!is_dir($dirPath)) { $dirPath = $_SERVER['DOCUMENT_ROOT'] . '/images/'; }
+                    $namaFileTersken = 'banner3.png';
+                    if (is_dir($dirPath)) {
+                        $files = scandir($dirPath);
+                        foreach ($files as $file) {
+                            if (str_contains($file, 'LOGO_OSCAR') && !str_contains($file, '.tmp')) {
+                                $namaFileTersken = $file;
+                                break;
+                            }
+                        }
+                    }
+                @endphp
+                <div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-5">
+                        <div class="space-y-1 text-center sm:text-left">
+                            <h3 class="text-base font-black text-slate-800 tracking-tight">📌 Informasi & Pengumuman Sekolah</h3>
+                            <p class="text-xs text-slate-400 font-semibold leading-relaxed">
+                                @if(str_contains($namaFileTersken, 'LOGO_OSCAR'))
+                                    Selamat! Logo kustomisasi absensi sekolah berhasil terunggah dan aktif secara real-time di sistem utama.
+                                @else
+                                    Pastikan pencahayaan cukup dan wajah terdeteksi jelas di depan kamera saat verifikasi Face ID presensi kelas.
+                                @endif
+                            </p>
+                        </div>
+                        <img src="{{ asset('images/' . $namaFileTersken) }}" alt="Banner Pengumuman" class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs">
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <!-- Left Column: Verification & Location (5 cols) -->
                     <div class="lg:col-span-5 space-y-6">
-                        <!-- Location & Time status card -->
                         <div class="bg-white p-5 md:p-6 rounded-[28px] shadow-xs border border-slate-100/80 flex flex-col items-center text-center space-y-3.5">
                             <div class="flex items-center space-x-1.5 bg-emerald-50/50 px-3.5 py-1.5 rounded-full border border-emerald-100/50 text-[10px] text-emerald-700 font-bold">
                                 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
@@ -303,11 +310,9 @@
                             </div>
                         </div>
 
-                        <!-- Quick Verification Area -->
                         <div class="space-y-3">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Verification</h3>
                             <div class="grid grid-cols-2 gap-3.5">
-                                <!-- Scan QR Code Button -->
                                 <button wire:click="toggleScannerModal" class="w-full bg-indigo-950 hover:bg-indigo-900 text-white py-5 px-4 rounded-[24px] shadow-md transition flex flex-col items-center justify-center space-y-2 border border-indigo-900 group">
                                     <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-indigo-200 group-hover:scale-105 transition">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -318,7 +323,6 @@
                                     <span class="text-xs font-bold">Scan QR Code</span>
                                 </button>
 
-                                <!-- Verify Face ID / Register Face ID Button -->
                                 @if($siswa->face_embedding)
                                     <button wire:click="toggleScannerModal" class="w-full bg-white hover:bg-slate-50 text-indigo-950 py-5 px-4 rounded-[24px] shadow-sm border border-slate-200 transition flex flex-col items-center justify-center space-y-2 group">
                                         <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition">
@@ -342,25 +346,20 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: Stats Grid (7 cols) -->
                     <div class="lg:col-span-7">
                         <div class="grid grid-cols-2 gap-4">
-                            <!-- Hadir Bulan Ini -->
                             <div class="bg-indigo-950 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
                                 <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">Hadir Bulan Ini</p>
                                 <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $hadirBulanIniCount }} <span class="text-sm font-semibold text-indigo-300">/20</span></h3>
                             </div>
-                            <!-- Tepat Waktu -->
                             <div class="bg-emerald-600 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
                                 <p class="text-[11px] font-bold text-emerald-100 uppercase tracking-wider">Tepat Waktu</p>
                                 <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $tepatWaktuCount }}</h3>
                             </div>
-                            <!-- Izin / Sakit -->
                             <div class="bg-amber-500 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
                                 <p class="text-[11px] font-bold text-amber-100 uppercase tracking-wider">Izin / Sakit</p>
                                 <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $izinSakitCount }}</h3>
                             </div>
-                            <!-- Terlambat -->
                             <div class="bg-rose-500 text-white p-5 rounded-[28px] shadow-sm flex flex-col justify-between min-h-[120px] relative overflow-hidden">
                                 <p class="text-[11px] font-bold text-rose-100 uppercase tracking-wider">Terlambat</p>
                                 <h3 class="text-3xl font-black tracking-tight mt-auto">{{ $terlambatCount }}</h3>
@@ -369,7 +368,6 @@
                     </div>
                 </div>
 
-                <!-- Ekstrakurikuler Saya (Many-to-Many Display & Registration) -->
                 <div class="bg-white p-5 md:p-6 rounded-[28px] border border-slate-100 shadow-xs space-y-5">
                     <div class="flex items-center space-x-2">
                         <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -381,7 +379,6 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Kolom Kiri: Ekskul yang Sedang Diikuti -->
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ekstrakurikuler yang Diikuti</h4>
@@ -410,7 +407,6 @@
                             </div>
                         </div>
 
-                        <!-- Kolom Kanan: Ekskul yang Tersedia Untuk Diikuti -->
                         <div class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ekstrakurikuler yang Tersedia</h4>
@@ -442,14 +438,12 @@
                 </div>
             </div>
 
-            <!-- TAB 2: RIWAYAT ABSENSI -->
             <div x-show="activeTab === 'history'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Riwayat Absensi</h2>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    <!-- Left Column: Calendar (5 cols) -->
                     <div class="lg:col-span-5 bg-white p-5 rounded-[28px] shadow-xs border border-slate-100">
                         <div class="flex justify-between items-center mb-4">
                             <span class="text-sm font-bold text-slate-800">{{ now()->translatedFormat('F Y') }}</span>
@@ -457,24 +451,20 @@
                                 <button @click="selectedHistoryDay = null" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-xl">Reset Filter</button>
                             </div>
                         </div>
-                        <!-- Calendar Grid Header -->
                         <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-2">
                             <span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span>
                         </div>
-                        <!-- Calendar Dates -->
                         <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-bold text-slate-700 select-none">
                             @php
-                                $startDayOfWeek = now()->startOfMonth()->dayOfWeek; // 0=Sunday, 6=Saturday
+                                $startDayOfWeek = now()->startOfMonth()->dayOfWeek;
                                 $daysInMonth = now()->daysInMonth;
                                 $todayDayNum = now()->day;
                             @endphp
                             
-                            <!-- Empty spacer blocks -->
                             @for($i = 0; $i < $startDayOfWeek; $i++)
                                 <span class="py-1 opacity-0">.</span>
                             @endfor
 
-                            <!-- Days of Month -->
                             @for($day = 1; $day <= $daysInMonth; $day++)
                                 @php
                                     $isToday = ($day === $todayDayNum);
@@ -490,7 +480,6 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: Recent Activities (7 cols) -->
                     <div class="lg:col-span-7 space-y-3">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aktivitas Terbaru</h3>
                         
@@ -544,13 +533,11 @@
                 </div>
             </div>
 
-            <!-- TAB 3: JADWAL PELAJARAN -->
             <div x-show="activeTab === 'schedule'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out] flex flex-col flex-grow min-h-[480px]">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Jadwal Pelajaran</h2>
                 </div>
 
-                <!-- Weekly calendar days selection (Scrollable on mobile, grid on desktop) -->
                 @php
                     $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                     $dayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -566,7 +553,6 @@
                     @endforeach
                 </div>
 
-                <!-- Schedule Card list filtered by selectedDay -->
                 <div class="w-full flex-grow flex flex-col">
                     @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $dName)
                         @php
@@ -608,7 +594,7 @@
                                                      {{ $status }}
                                                  </span>
                                              </div>
-        
+                                        
                                              <div class="mt-4 flex items-center justify-between text-[10px] font-medium border-t pt-3.5 {{ $status === 'Sedang Berlangsung' ? 'border-white/10 text-indigo-200' : 'border-slate-100 text-slate-500' }}">
                                                  <span class="flex items-center">
                                                      <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -634,7 +620,6 @@
                         </div>
                     @endforeach
                     
-                    <!-- Minggu fallback -->
                     <div x-show="selectedDay === 'Minggu'" class="bg-white p-8 rounded-[28px] border border-slate-100/80 text-center text-slate-400 w-full flex-grow flex flex-col items-center justify-center min-h-[320px] shadow-xs">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mx-auto mb-2 text-slate-300">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -645,12 +630,9 @@
                 </div>
             </div>
 
-            <!-- TAB 4: PROFIL SISWA -->
             <div x-show="activeTab === 'profile'" x-cloak class="space-y-6 animate-[fadeIn_0.2s_ease-out]">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    <!-- Left Column: Details & Stats (5 cols) -->
                     <div class="lg:col-span-5 space-y-6">
-                        <!-- Profile details card -->
                         <div class="bg-white p-6 rounded-[28px] shadow-xs border border-slate-100 flex flex-col items-center space-y-4">
                             <div class="relative">
                                 @if($siswa->foto_profil)
@@ -670,14 +652,11 @@
                             </div>
                         </div>
 
-                        <!-- Profile Stats -->
                         <div class="grid grid-cols-2 gap-4">
-                            <!-- Total Kehadiran -->
                             <div class="bg-indigo-950 text-white p-5 rounded-[24px] shadow-sm flex flex-col justify-between h-28">
                                 <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Total Kehadiran</p>
                                 <h3 class="text-2xl font-black tracking-tight mt-auto">{{ $kehadiranPercentage }}%</h3>
                             </div>
-                            <!-- Poin Perilaku -->
                             <div class="bg-white text-slate-700 p-5 rounded-[24px] border border-slate-100 shadow-xs flex flex-col justify-between h-28">
                                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Poin Perilaku</p>
                                 <h3 class="text-2xl font-black text-emerald-600 tracking-tight mt-auto">150</h3>
@@ -685,22 +664,18 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: Settings (7 cols) -->
                     <div class="lg:col-span-7 space-y-3">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pengaturan Akun</h3>
                         
                         <div class="bg-white rounded-[28px] border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden text-sm font-semibold text-slate-700">
-                            <!-- Informasi Pribadi -->
                             <div @click="showPersonalInfoModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
                                 <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>Informasi Pribadi</span>
                                 <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </div>
-                            <!-- Pengaturan Notifikasi -->
                             <div @click="showNotificationModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
                                 <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>Pengaturan Notifikasi</span>
                                 <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </div>
-                            <!-- Keamanan & Face ID -->
                             <div @click="showFaceIdManageModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
                                 <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 009 14a13.92 13.92 0 01-2-7.3m3.44 14.44a13.947 13.947 0 005.003-9.571M19.04 12.04l.054-.09a13.916 13.916 0 00-1.094-11.23M19.04 12.04c0 1.29-.166 2.542-.48 3.738M19.04 12.04a13.96 13.96 0 01-3.003-9.571m-2 13.571a13.9 13.9 0 01-6-2.29M12 9a3 3 0 100-6 3 3 0 000 6z" /></svg>Keamanan & Face ID</span>
                                 <div class="flex items-center space-x-1">
@@ -708,13 +683,11 @@
                                     <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                                 </div>
                             </div>
-                            <!-- Pusat Bantuan -->
                             <div @click="showHelpModal = true" class="p-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition">
                                 <span class="flex items-center"><svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>Pusat Bantuan</span>
                                 <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                             </div>
                             
-                            <!-- Logout Action Button -->
                             <div @click="showLogoutModal = true" class="p-4 flex items-center justify-between hover:bg-rose-50 text-rose-600 cursor-pointer transition font-semibold">
                                 <span class="flex items-center">
                                     <svg class="w-4 h-4 mr-2 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -733,7 +706,6 @@
             
         </div>
 
-        <!-- Floating Bottom Navigation -->
         <nav class="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-30 shrink-0 select-none">
             <button @click="activeTab = 'dashboard'" class="flex flex-col items-center space-y-1 group">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition" :class="activeTab === 'dashboard' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -764,7 +736,6 @@
             </button>
         </nav>
 
-        <!-- QR Code Scanner Modal -->
         @if($showScannerModal)
             <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true"
                  x-data="{
@@ -921,7 +892,6 @@
                 <div class="flex items-center justify-center min-h-screen p-4 text-center">
                     <div class="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-xs" @click="closeScanner()" aria-hidden="true"></div>
                     
-                    <!-- Modal Box -->
                     <div class="relative z-50 inline-block align-middle bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-[360px] border border-slate-100 animate-[fadeIn_0.2s_ease-out]">
                         <div class="bg-white px-5 pt-5 pb-4">
                             <div class="flex justify-between items-center pb-3.5 border-b border-slate-100">
@@ -935,21 +905,7 @@
                                 </button>
                             </div>
 
-                            <!-- Camera Notice -->
-                            <div x-show="!isFaceVerificationMode" class="mt-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200/60 flex items-start space-x-2 text-left leading-normal shadow-sm">
-                                <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <div class="space-y-0.5 text-amber-900">
-                                    <p class="text-[10px] font-bold">Izin Kamera Diperlukan</p>
-                                    <p class="text-[9px] text-amber-800 font-semibold leading-normal">
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Scanner Area -->
                             <div class="mt-4 flex flex-col items-center justify-center space-y-3">
-                                <!-- QR Mode -->
                                 <div x-show="!isFaceVerificationMode" class="relative w-full max-w-[280px] bg-slate-950 rounded-2xl overflow-hidden aspect-square border border-slate-800 flex flex-col items-center justify-center p-3">
                                     <div class="absolute inset-0 pointer-events-none border-2 border-indigo-500/20 rounded-2xl z-10">
                                         <div class="w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_12px_rgba(99,102,241,0.8)] animate-[scanLaser_2s_infinite] absolute top-0"></div>
@@ -957,7 +913,6 @@
                                     <div id="webcam-portal-reader" class="w-full h-full" style="border: none !important;"></div>
                                 </div>
 
-                                <!-- Face Verification Mode -->
                                 <div x-show="isFaceVerificationMode" class="face-video-container mx-auto">
                                     <video x-ref="faceVerifyVideo" id="face-verify-video-el" class="scale-x-[-1]" playsinline muted></video>
                                     <canvas x-ref="faceVerifyCanvas" class="scale-x-[-1]"></canvas>
@@ -982,7 +937,6 @@
             </div>
         @endif
 
-        <!-- Face ID Registration Modal -->
         @if($showRegisterFaceModal)
             <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-face-reg" role="dialog" aria-modal="true"
                  x-data="{
@@ -1091,13 +1045,11 @@
                                 </button>
                             </div>
 
-                            <!-- Status bar -->
                             <div class="mt-3 p-2.5 rounded-2xl text-[10px] font-bold text-center"
                                  :class="isFaceDetected ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : 'bg-slate-100 text-slate-700'">
                                 <span x-text="statusText"></span>
                             </div>
 
-                            <!-- Video Area -->
                             <div class="mt-4 flex flex-col items-center justify-center">
                                 <div class="face-video-container mx-auto">
                                     <video x-ref="faceRegVideo" id="face-reg-video-el" class="scale-x-[-1]" playsinline muted></video>
@@ -1129,8 +1081,6 @@
             </div>
         @endif
 
-        <!-- Profile Detail Modals -->
-        <!-- 1. Informasi Pribadi -->
         <div x-show="showPersonalInfoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showPersonalInfoModal = false"></div>
             <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-left">
@@ -1157,7 +1107,6 @@
             </div>
         </div>
 
-        <!-- 2. Pengaturan Notifikasi -->
         <div x-show="showNotificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showNotificationModal = false"></div>
             <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
@@ -1170,7 +1119,6 @@
             </div>
         </div>
 
-        <!-- 3. Pusat Bantuan -->
         <div x-show="showHelpModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showHelpModal = false"></div>
             <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
@@ -1183,7 +1131,6 @@
             </div>
         </div>
 
-        <!-- 4. Keamanan & Face ID -->
         <div x-show="showFaceIdManageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showFaceIdManageModal = false"></div>
             <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center">
@@ -1207,7 +1154,6 @@
             </div>
         </div>
 
-        <!-- 5. Konfirmasi Keluar (Logout) -->
         <div x-show="showLogoutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]" x-cloak>
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="showLogoutModal = false"></div>
             <div class="bg-white rounded-3xl p-6 w-full max-w-[320px] relative z-10 border border-slate-100 shadow-xl space-y-4 text-center animate-[scaleIn_0.2s_ease-out]">
