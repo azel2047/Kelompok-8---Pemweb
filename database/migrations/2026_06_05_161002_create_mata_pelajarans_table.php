@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nama_mapel');
             $table->string('kode_mapel')->unique();
+            $table->longText('deskripsi_mapel_opsional')->nullable();
             $table->timestamps();
         });
     }

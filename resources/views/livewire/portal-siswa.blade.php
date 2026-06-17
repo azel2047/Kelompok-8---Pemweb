@@ -90,26 +90,6 @@
     @push('scripts')
         <script src="https://unpkg.com/html5-qrcode"></script>
         <script>
-            // =========================================================================
-            // PERTANYAAN DOSEN/PENGUJI: "Bagaimana cara kerja deteksi & verifikasi Face ID di frontend?"
-            // 
-            // 1. LIBRARY YANG DIGUNAKAN:
-            //    Menggunakan Vladmandic Face-API (porting modern dari face-api.js) yang memproses model AI di browser siswa (client-side).
-            // 
-            // 2. MODEL AI YANG DIMUAT (PRELOAD):
-            //    - `tinyFaceDetector`: Model deteksi keberadaan wajah yang sangat ringan dan cepat.
-            //    - `faceLandmark68TinyNet`: Mendeteksi 68 titik wajah (mata, alis, hidung, mulut) untuk alignment wajah.
-            //    - `faceRecognitionNet`: Membuat representasi matematis berupa array 128 elemen (Face Descriptor / Face Embedding).
-            // 
-            // 3. PROSES DETEKSI REAL-TIME (`detectFaceLoop` & `detectFaceVerifyLoop`):
-            //    - Sistem menangkap gambar dari webcam/kamera lewat HTML5 `<video>` tag.
-            //    - Secara berkala (setiap 300 milidetik), script memanggil `faceapi.detectSingleFace(...)` untuk mencari wajah.
-            //    - Jika wajah terdeteksi dengan tingkat keyakinan (scoreThreshold) >= 50% (0.5), maka descriptor wajahnya diambil.
-            // 
-            // 4. ALUR REGISTRASI (PENDAFTARAN WAJAH):
-            //    - Setelah wajah terdeteksi, data descriptor diubah menjadi array standar (`Array.from(detection.descriptor)`).
-            //    - Array ini dikirim ke backend Livewire melalui method `$wire.simpanFaceEmbedding(JSON.stringify(this.embedding))` untuk disimpan ke database.
-            // =========================================================================
             window.__faceModelsLoaded = false;
             window.__faceApiReady = false;
             window.__loadFaceApi = async function() {
@@ -287,36 +267,28 @@
                     </span>
                 </div>
 
-                @php
-                    $dirPath = base_path('../public_html/images/');
-                    if (!is_dir($dirPath)) { $dirPath = $_SERVER['DOCUMENT_ROOT'] . '/images/'; }
-                    $namaFileTersken = 'banner3.png';
-                    if (is_dir($dirPath)) {
-                        $files = scandir($dirPath);
-                        foreach ($files as $file) {
-                            if (str_contains($file, 'LOGO_OSCAR') && !str_contains($file, '.tmp')) {
-                                $namaFileTersken = $file;
-                                break;
-                            }
-                        }
-                    }
-                @endphp
-                <div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
-                    <div class="flex flex-col sm:flex-row items-center justify-between gap-5">
-                        <div class="space-y-1 text-center sm:text-left">
-                            <h3 class="text-base font-black text-slate-800 tracking-tight">📌 Informasi & Pengumuman Sekolah</h3>
-                            <p class="text-xs text-slate-400 font-semibold leading-relaxed">
-                                @if(str_contains($namaFileTersken, 'LOGO_OSCAR'))
-                                    Selamat! Logo kustomisasi absensi sekolah berhasil terunggah dan aktif secara real-time di sistem utama.
-                                @else
-                                    Pastikan pencahayaan cukup dan wajah terdeteksi jelas di depan kamera saat verifikasi Face ID presensi kelas.
-                                @endif
-                            </p>
-                        </div>
-                        <img src="{{ asset('images/' . $namaFileTersken) }}" alt="Banner Pengumuman" class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs">
-                    </div>
-                </div>
+@php
+    // Ambil data mapel id 5 secara bersih
+    $mapel = \App\Models\MataPelajaran::find(5); 
+    $namaFile = $mapel ? $mapel->deskripsi_mapel_opsional : null;
+@endphp
 
+<div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-5">
+        <div class="space-y-1 text-center sm:text-left">
+            <h3 class="text-base font-black text-slate-800 tracking-tight">Informasi & Pengumuman Sekolah</h3>
+            <p class="text-xs text-slate-400 font-semibold leading-relaxed">
+                {{ $mapel ? 'Banner untuk ' . $mapel->nama_mapel . ' berhasil dimuat.' : 'Pastikan pencahayaan cukup untuk Face ID.' }}
+            </p>
+        </div>
+        
+       @if($namaFile)
+            <img src="{{ $namaFile }}" 
+                 alt="Banner Pengumuman" 
+                 class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs">
+        @endif
+    </div>
+</div>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div class="lg:col-span-5 space-y-6">
                         <div class="bg-white p-5 md:p-6 rounded-[28px] shadow-xs border border-slate-100/80 flex flex-col items-center text-center space-y-3.5">
