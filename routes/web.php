@@ -24,6 +24,15 @@ Route::middleware(['auth'])->group(function () {
             abort(403, 'Akses ditolak.');
         }
 
+        // =========================================================================
+        // PERTANYAAN DOSEN/PENGUJI: "Bagaimana cara QR Code dibuat dinamis & aman dari pemalsuan?"
+        // FUNGSI: Menghasilkan kode QR dinamis berbasis waktu (Time-based One-Time Token/HMAC).
+        // PENJELASAN ALGORITMA:
+        // 1. $timeWindow = Waktu saat ini (detik) dibagi 15. QR Code otomatis berubah setiap 15 detik.
+        // 2. $hash = Tanda tangan digital menggunakan HMAC-SHA256 untuk memverifikasi keaslian QR Code, 
+        //    sehingga QR Code tidak bisa dibuat sendiri secara manual oleh siswa jahil.
+        // 3. $payload = Menggabungkan ID Jadwal, Time Window, dan Tanda Tangan (Hash) menjadi string payload QR.
+        // =========================================================================
         $timeWindow = floor(time() / 15);
         $hash = substr(hash_hmac('sha256', $jadwal->id . '|' . $timeWindow, config('app.key')), 0, 16);
         $payload = $jadwal->id . '|' . $timeWindow . '|' . $hash;

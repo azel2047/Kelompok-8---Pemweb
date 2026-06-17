@@ -90,6 +90,26 @@
     @push('scripts')
         <script src="https://unpkg.com/html5-qrcode"></script>
         <script>
+            // =========================================================================
+            // PERTANYAAN DOSEN/PENGUJI: "Bagaimana cara kerja deteksi & verifikasi Face ID di frontend?"
+            // 
+            // 1. LIBRARY YANG DIGUNAKAN:
+            //    Menggunakan Vladmandic Face-API (porting modern dari face-api.js) yang memproses model AI di browser siswa (client-side).
+            // 
+            // 2. MODEL AI YANG DIMUAT (PRELOAD):
+            //    - `tinyFaceDetector`: Model deteksi keberadaan wajah yang sangat ringan dan cepat.
+            //    - `faceLandmark68TinyNet`: Mendeteksi 68 titik wajah (mata, alis, hidung, mulut) untuk alignment wajah.
+            //    - `faceRecognitionNet`: Membuat representasi matematis berupa array 128 elemen (Face Descriptor / Face Embedding).
+            // 
+            // 3. PROSES DETEKSI REAL-TIME (`detectFaceLoop` & `detectFaceVerifyLoop`):
+            //    - Sistem menangkap gambar dari webcam/kamera lewat HTML5 `<video>` tag.
+            //    - Secara berkala (setiap 300 milidetik), script memanggil `faceapi.detectSingleFace(...)` untuk mencari wajah.
+            //    - Jika wajah terdeteksi dengan tingkat keyakinan (scoreThreshold) >= 50% (0.5), maka descriptor wajahnya diambil.
+            // 
+            // 4. ALUR REGISTRASI (PENDAFTARAN WAJAH):
+            //    - Setelah wajah terdeteksi, data descriptor diubah menjadi array standar (`Array.from(detection.descriptor)`).
+            //    - Array ini dikirim ke backend Livewire melalui method `$wire.simpanFaceEmbedding(JSON.stringify(this.embedding))` untuk disimpan ke database.
+            // =========================================================================
             window.__faceModelsLoaded = false;
             window.__faceApiReady = false;
             window.__loadFaceApi = async function() {

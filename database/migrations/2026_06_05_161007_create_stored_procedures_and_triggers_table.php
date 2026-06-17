@@ -17,7 +17,14 @@ return new class extends Migration
         // Drop procedure if exists first
         DB::unprepared("DROP PROCEDURE IF EXISTS sp_catat_absen_qr");
         
-        // Create procedure
+        // =========================================================================
+        // PERTANYAAN DOSEN/PENGUJI: "Apa fungsi Stored Procedure ini dan kenapa pakai Stored Procedure?"
+        // FUNGSI: `sp_catat_absen_qr` mencocokkan token QR siswa dengan tabel `siswa`, mendapatkan ID Siswa, 
+        //         dan memasukkan data kehadiran langsung ke tabel `absensi`.
+        // ALASAN: 
+        // 1. Eksekusi lebih cepat karena diproses langsung di level database (DBMS MySQL).
+        // 2. Mengurangi beban server PHP Laravel karena logika pencocokan token & insert dilakukan dalam satu kali call.
+        // =========================================================================
         DB::unprepared("
             CREATE PROCEDURE sp_catat_absen_qr(IN p_token VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci, IN p_jadwal_id INT, IN p_status VARCHAR(10))
             BEGIN
@@ -33,7 +40,15 @@ return new class extends Migration
         // Drop trigger if exists
         DB::unprepared("DROP TRIGGER IF EXISTS tr_after_insert_absensi");
 
-        // Create trigger
+        // =========================================================================
+        // PERTANYAAN DOSEN/PENGUJI: "Apa fungsi Trigger ini dan kenapa ditaruh di database?"
+        // FUNGSI: `tr_after_insert_absensi` otomatis merekam aktivitas log ke tabel `audit_logs`
+        //         setiap kali ada data absensi baru dimasukkan (AFTER INSERT ON absensi).
+        // ALASAN:
+        // 1. Konsistensi Data: Siapapun atau program apapun yang melakukan insert ke tabel absensi (baik Laravel, 
+        //    admin panel, maupun query SQL manual), log aktivitasnya PASTI akan dicatat secara otomatis oleh DBMS.
+        // 2. Keamanan: Tidak bisa dimanipulasi dari level aplikasi PHP karena trigger berjalan otomatis di level database.
+        // =========================================================================
         DB::unprepared("
             CREATE TRIGGER tr_after_insert_absensi
             AFTER INSERT ON absensi FOR EACH ROW

@@ -48,7 +48,17 @@ class PortalSiswa extends Component
         $this->successMessage = '';
         $this->errorMessage = '';
 
-        // Face ID verification if registered
+        // =========================================================================
+        // PERTANYAAN DOSEN/PENGUJI: "Bagaimana cara kerja verifikasi Face ID di sistem ini?"
+        // FUNGSI: Melakukan verifikasi wajah siswa saat melakukan scan absensi.
+        // CARA KERJA:
+        // 1. Jika siswa sudah mendaftarkan wajah (ada data `face_embedding` di database), maka wajah siswa 
+        //    akan di-scan ulang oleh webcam saat proses absensi.
+        // 2. Sistem membandingkan data embedding wajah terdaftar dengan embedding hasil scan webcam terbaru.
+        // 3. Perbandingan menggunakan rumus Euclidean Distance (selisih kuadrat jarak vektor 128-dimensi).
+        // 4. Batas ambang toleransi kemiripan wajah (Threshold) diatur sebesar 0.6. Jika hasil perhitungan 
+        //    jarak > 0.6, maka wajah dianggap TIDAK cocok (absensi ditolak).
+        // =========================================================================
         if ($this->siswa->face_embedding) {
             if (empty($scannedEmbedding)) {
                 $this->errorMessage = 'Verifikasi Face ID diperlukan untuk melakukan absensi.';
@@ -66,7 +76,17 @@ class PortalSiswa extends Component
 
         $jadwalId = $payload;
 
-        // Verify if payload is dynamic
+        // =========================================================================
+        // PERTANYAAN DOSEN/PENGUJI: "Bagaimana sistem memvalidasi QR Code agar anti-kecurangan?"
+        // FUNGSI: Memverifikasi tanda tangan HMAC dan memeriksa apakah QR Code sudah kedaluwarsa.
+        // CARA KERJA:
+        // 1. Memecah payload QR Code menjadi 3 bagian: ID Jadwal, Time Window, dan Hash (tanda tangan).
+        // 2. hash_hmac('sha256', ...): Menghitung ulang signature di server menggunakan ID Jadwal dan Time Window 
+        //    yang tertera di QR Code, kemudian membandingkannya dengan Hash hasil scan memakai `hash_equals` (anti timing attack).
+        // 3. Jika tanda tangan cocok, maka QR Code dikonfirmasi ASLI dibuat oleh sistem, bukan buatan siswa sendiri.
+        // 4. Membandingkan $currentWindow dengan $timeWindow (maksimal selisih 2 window = 30 detik lag). 
+        //    Jika lebih dari itu, QR Code dinyatakan kedaluwarsa (kedaluwarsa dalam 30 detik untuk toleransi jaringan).
+        // =========================================================================
         if (str_contains($payload, '|')) {
             $parts = explode('|', $payload);
             if (count($parts) === 3) {
@@ -95,7 +115,8 @@ class PortalSiswa extends Component
                 $this->showScannerModal = false;
                 return;
             }
-        } else {
+        }
+ else {
             // For testing and backward compatibility, only allow raw integer IDs in non-production environments
             if (app()->environment('production')) {
                 $this->errorMessage = 'Metode absensi menggunakan kode statis dilarang. Harus scan langsung dari layar guru.';
@@ -132,7 +153,15 @@ class PortalSiswa extends Component
         }
 
         try {
-            // Call the database Stored Procedure (with SQLite fallback for tests)
+            // =========================================================================
+            // PERTANYAAN DOSEN/PENGUJI: "Di mana Stored Procedure dipanggil di kode Laravel?"
+            // FUNGSI: Mengeksekusi Stored Procedure `sp_catat_absen_qr` di database MySQL.
+            // CARA KERJA:
+            // 1. Memanggil `DB::statement("CALL sp_catat_absen_qr(?, ?, 'Hadir')", [...])`
+            // 2. Mengirimkan parameter Token QR Siswa dan ID Jadwal Pelajaran.
+            // 3. Jika driver database bukan MySQL (misal SQLite untuk PHPUnit Feature Test), 
+            //    sistem secara otomatis menggunakan fallback Eloquent ORM biasa agar testing tetap bisa berjalan lancar.
+            // =========================================================================
             if (DB::getDriverName() === 'mysql') {
                 DB::statement("CALL sp_catat_absen_qr(?, ?, 'Hadir')", [
                     $this->siswa->qr_code_token,
