@@ -6,7 +6,7 @@ use App\Filament\Resources\EkstrakurikulerResource\Pages;
 use App\Filament\Resources\EkstrakurikulerResource\RelationManagers;
 use App\Models\Ekstrakurikuler;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,13 +16,13 @@ class EkstrakurikulerResource extends Resource
 {
     protected static ?string $model = Ekstrakurikuler::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-trophy';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-trophy';
     protected static ?string $navigationLabel = 'Ekstrakurikuler';
     protected static ?string $modelLabel = 'Ekstrakurikuler';
     protected static ?string $pluralModelLabel = 'Ekstrakurikuler';
-    protected static ?string $navigationGroup = 'Master Data';
+    protected static string | \UnitEnum | null $navigationGroup = 'Master Data';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
             ->schema([

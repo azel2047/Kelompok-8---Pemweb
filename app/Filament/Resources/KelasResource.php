@@ -6,7 +6,7 @@ use App\Filament\Resources\KelasResource\Pages;
 use App\Filament\Resources\KelasResource\RelationManagers;
 use App\Models\Kelas;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -17,13 +17,13 @@ class KelasResource extends Resource
 {
     protected static ?string $model = Kelas::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'Kelas';
     protected static ?string $modelLabel = 'Kelas';
     protected static ?string $pluralModelLabel = 'Kelas';
-    protected static ?string $navigationGroup = 'Master Data';
+    protected static string | \UnitEnum | null $navigationGroup = 'Master Data';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
             ->schema([

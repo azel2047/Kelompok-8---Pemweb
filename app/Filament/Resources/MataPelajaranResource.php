@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MataPelajaranResource\Pages;
 use App\Models\MataPelajaran;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -13,11 +13,11 @@ use Filament\Tables\Table;
 class MataPelajaranResource extends Resource
 {
     protected static ?string $model = MataPelajaran::class;
-    protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationGroup = 'Master Data';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-book-open';
+    protected static string | \UnitEnum | null $navigationGroup = 'Master Data';
 
     // 1. INPUT FORM UTAMA
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
             ->schema([

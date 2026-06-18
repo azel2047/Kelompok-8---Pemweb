@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AbsensiResource\Pages;
 use App\Models\Absensi;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,13 +15,13 @@ class AbsensiResource extends Resource
 {
     protected static ?string $model = Absensi::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationLabel = 'Kehadiran Siswa';
     protected static ?string $modelLabel = 'Absensi';
     protected static ?string $pluralModelLabel = 'Kehadiran Siswa';
-    protected static ?string $navigationGroup = 'Menu Absensi';
+    protected static string | \UnitEnum | null $navigationGroup = 'Menu Absensi';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
             ->schema([

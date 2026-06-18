@@ -6,7 +6,7 @@ use App\Filament\Resources\JadwalPelajaranResource\Pages;
 use App\Filament\Resources\JadwalPelajaranResource\RelationManagers;
 use App\Models\JadwalPelajaran;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -17,13 +17,13 @@ class JadwalPelajaranResource extends Resource
 {
     protected static ?string $model = JadwalPelajaran::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'Jadwal Pelajaran';
     protected static ?string $modelLabel = 'Jadwal Pelajaran';
     protected static ?string $pluralModelLabel = 'Jadwal Pelajaran';
-    protected static ?string $navigationGroup = 'Menu Absensi';
+    protected static string | \UnitEnum | null $navigationGroup = 'Menu Absensi';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
             ->schema([
