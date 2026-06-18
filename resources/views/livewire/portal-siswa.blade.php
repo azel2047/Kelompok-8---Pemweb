@@ -268,9 +268,15 @@
                 </div>
 
 @php
-    // Ambil data mapel id 5 secara bersih
-    $mapel = \App\Models\MataPelajaran::find(5); 
+    // Ambil data mapel yang memiliki banner secara dinamis
+    $mapel = \App\Models\MataPelajaran::whereNotNull('deskripsi_mapel_opsional')
+        ->where('deskripsi_mapel_opsional', '!=', '')
+        ->first(); 
     $namaFile = $mapel ? $mapel->deskripsi_mapel_opsional : null;
+    $bannerUrl = null;
+    if ($namaFile) {
+        $bannerUrl = str_starts_with($namaFile, 'data:image') ? $namaFile : asset('storage/' . $namaFile);
+    }
 @endphp
 
 <div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
@@ -282,8 +288,8 @@
             </p>
         </div>
         
-       @if($namaFile)
-            <img src="{{ $namaFile }}" 
+       @if($bannerUrl)
+            <img src="{{ $bannerUrl }}" 
                  alt="Banner Pengumuman" 
                  class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs">
         @endif
