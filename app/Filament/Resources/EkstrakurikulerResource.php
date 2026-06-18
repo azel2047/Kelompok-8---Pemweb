@@ -26,7 +26,7 @@ class EkstrakurikulerResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Card::make()
+                \Filament\Schemas\Components\Section::make()
                     ->schema([
                         Forms\Components\TextInput::make('nama_ekskul')
                             ->label('Nama Ekstrakurikuler')

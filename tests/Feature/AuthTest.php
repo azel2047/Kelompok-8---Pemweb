@@ -85,4 +85,35 @@ class AuthTest extends TestCase
         $response = $this->get('/admin');
         $response->assertStatus(403);
     }
+
+    public function test_admin_can_access_all_filament_resources()
+    {
+        $this->seed();
+
+        $user = User::where('role', 'Admin')->first();
+
+        $this->actingAs($user);
+
+        $urls = [
+            '/admin/users',
+            '/admin/users/create',
+            '/admin/absensis',
+            '/admin/absensis/create',
+            '/admin/audit-logs',
+            '/admin/ekstrakurikulers',
+            '/admin/ekstrakurikulers/create',
+            '/admin/jadwal-pelajarans',
+            '/admin/jadwal-pelajarans/create',
+            '/admin/kelas',
+            '/admin/kelas/create',
+            '/admin/mata-pelajarans',
+        ];
+
+        foreach ($urls as $url) {
+            $response = $this->get($url);
+            $response->assertStatus(200, "Failed to load URL: {$url}");
+        }
+    }
 }
+
+

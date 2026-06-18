@@ -27,7 +27,7 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Informasi Akun')
+                \Filament\Schemas\Components\Section::make('Informasi Akun')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->required()
@@ -53,7 +53,7 @@ class UserResource extends Resource
                             ->maxLength(255),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Detail Siswa')
+                \Filament\Schemas\Components\Section::make('Detail Siswa')
                     ->relationship('siswa')
                     ->schema([
                         Forms\Components\Select::make('kelas_id')
@@ -77,7 +77,7 @@ class UserResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(3)
-                    ->visible(fn (Forms\Get $get) => $get('role') === 'Siswa'),
+                    ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get) => $get('role') === 'Siswa'),
             ]);
     }
 
