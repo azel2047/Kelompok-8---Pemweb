@@ -46,7 +46,7 @@ class SiswaRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make()
+                \Filament\Actions\AttachAction::make()
                     ->preloadRecordSelect()
                     ->recordSelectOptionsQuery(fn (Builder $query) => $query->with('user'))
                     ->recordSelect(fn (Forms\Components\Select $select) => $select->getOptionLabelFromRecordUsing(
@@ -55,12 +55,12 @@ class SiswaRelationManager extends RelationManager
                     ->label('Tambah Anggota (Attach)'),
             ])
             ->actions([
-                Tables\Actions\DetachAction::make()
+                \Filament\Actions\DetachAction::make()
                     ->label('Keluarkan (Detach)'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DetachBulkAction::make(),
                 ]),
             ]);
     }

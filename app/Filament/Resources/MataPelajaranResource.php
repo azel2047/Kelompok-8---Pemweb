@@ -60,7 +60,7 @@ class MataPelajaranResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('showQr')
+                \Filament\Actions\Action::make('showQr')
                     ->label('QR Absen')
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
@@ -68,8 +68,8 @@ class MataPelajaranResource extends Resource
                     ->modalContent(fn ($record) => view('filament.components.qr-modal', ['record' => $record]))
                     ->modalSubmitAction(false),
                     
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
             ]);
     }
 
