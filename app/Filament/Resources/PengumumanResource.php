@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PengumumanResource\Pages;
 use App\Models\Pengumuman;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,13 +14,13 @@ class PengumumanResource extends Resource
 {
     protected static ?string $model = Pengumuman::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
     
     protected static ?string $navigationLabel = 'Pengumuman Sekolah';
     
     protected static ?string $pluralLabel = 'Pengumuman';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
 {
     return $form
         ->schema([
