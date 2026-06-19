@@ -32,7 +32,7 @@ class PengumumanResource extends Resource
             Forms\Components\Hidden::make('banner_base64')
                 ->dehydrated(true), // Memaksa data ikut dikirim saat save
                 
-            Forms\Components\View::make('filament.components.pengumuman-uploader')
+            \Filament\Schemas\Components\View::make('filament.components.pengumuman-uploader')
                 ->columnSpanFull(),
                 
             Forms\Components\Toggle::make('is_active')
@@ -60,12 +60,12 @@ class PengumumanResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
