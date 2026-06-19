@@ -268,33 +268,36 @@
                 </div>
 
 @php
-    // Ambil data mapel yang memiliki banner secara dinamis
-    $mapel = \App\Models\MataPelajaran::whereNotNull('deskripsi_mapel_opsional')
-        ->where('deskripsi_mapel_opsional', '!=', '')
-        ->first(); 
-    $namaFile = $mapel ? $mapel->deskripsi_mapel_opsional : null;
-    $bannerUrl = null;
-    if ($namaFile) {
-        $bannerUrl = str_starts_with($namaFile, 'data:image') ? $namaFile : asset('storage/' . $namaFile);
-    }
-@endphp
+            // 1. Ambil 1 pengumuman terbaru yang aktif
+            $pengumuman = \App\Models\Pengumuman::where('is_active', 1)->latest()->first();
 
-<div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-5">
-        <div class="space-y-1 text-center sm:text-left">
-            <h3 class="text-base font-black text-slate-800 tracking-tight">Informasi & Pengumuman Sekolah</h3>
-            <p class="text-xs text-slate-400 font-semibold leading-relaxed">
-                {{ $mapel ? 'Banner untuk ' . $mapel->nama_mapel . ' berhasil dimuat.' : 'Pastikan pencahayaan cukup untuk Face ID.' }}
-            </p>
+            $judulPengumuman = $pengumuman ? $pengumuman->judul : 'Informasi & Pengumuman Sekolah';
+            $rawBase64 = $pengumuman ? $pengumuman->banner_base64 : '';
+
+            // 2. Sterilisasi string Base64 dari kutip ganda atau backslash database
+            if (!empty($rawBase64)) {
+                $rawBase64 = trim($rawBase64, '"\'');
+                $rawBase64 = str_replace('\\/', '/', $rawBase64);
+            }
+        @endphp
+
+        <div class="overflow-hidden rounded-[28px] bg-white p-5 md:p-6 shadow-xs border border-slate-100">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-5">
+                <div class="space-y-1 text-center sm:text-left">
+                    <h3 class="text-base font-black text-slate-800 tracking-tight">{{ $judulPengumuman }}</h3>
+                    <p class="text-xs text-slate-400 font-semibold leading-relaxed">
+                        {{ $pengumuman ? 'Banner pengumuman berhasil dimuat.' : 'Pastikan pencahayaan cukup untuk Face ID.' }}
+                    </p>
+                </div>
+
+                @if(!empty($rawBase64))
+                    <img src="{{ $rawBase64 }}" 
+                         alt="Banner Pengumuman" 
+                         class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs"
+                         onerror="this.style.display='none';">
+                @endif
+            </div>
         </div>
-        
-       @if($bannerUrl)
-            <img src="{{ $bannerUrl }}" 
-                 alt="Banner Pengumuman" 
-                 class="h-20 w-auto rounded-xl object-cover border border-slate-100/70 shrink-0 shadow-xs">
-        @endif
-    </div>
-</div>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div class="lg:col-span-5 space-y-6">
                         <div class="bg-white p-5 md:p-6 rounded-[28px] shadow-xs border border-slate-100/80 flex flex-col items-center text-center space-y-3.5">
